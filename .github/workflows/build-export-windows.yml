@@ -22,7 +22,7 @@ jobs:
         shell: pwsh
         run: |
           uv python install 3.12 --install-dir python
-          $pyExe = (Get-ChildItem python\cpython-* -Filter python.exe -Recurse | Select-Object -First 1).FullName
+          $pyExe = (Get-ChildItem python\cpython-*\python.exe | Select-Object -First 1).FullName
           uv venv export --python $pyExe --relocatable
           uv pip install --python export\Scripts\python.exe -r export-model\requirements.txt
 
