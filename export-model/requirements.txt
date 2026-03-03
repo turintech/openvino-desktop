@@ -1,0 +1,18 @@
+--extra-index-url "https://download.pytorch.org/whl/cpu"
+optimum-intel@git+https://github.com/huggingface/optimum-intel.git@a484bc6ee1175bbe8868bb53d2c42ab4c4802aa6
+accelerate==1.11.0
+datasets
+diffusers==0.35.2  # for image generation
+einops==0.8.1
+nncf==3.0.0
+numpy==2.2.6
+openvino-tokenizers==2026.0.0
+openvino==2026.0.0
+#optimum is in dependency list of optimum-intel
+pillow==12.0.0
+sentence_transformers
+sentencepiece
+timm==1.0.25
+torchvision
+torch==2.9.1+cpu
+transformers==4.55.4
