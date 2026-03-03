@@ -66,7 +66,11 @@ export default function App() {
     setSearchResults([])
     setSelectedModel('')
     SearchModels(query, activeFilters || [])
-      .then(results => setSearchResults(results || []))
+      .then(results => {
+        const list = results || []
+        setSearchResults(list)
+        if (list.length === 1) setSelectedModel(list[0].id)
+      })
       .catch(err => setError(String(err)))
       .finally(() => setSearching(false))
   }
@@ -177,7 +181,7 @@ export default function App() {
               {searchResults.length > 0 && (
                 <div className="search-results">
                   <select
-                    size={Math.min(searchResults.length, 8)}
+                    size={Math.min(Math.max(searchResults.length, 2), 8)}
                     value={selectedModel}
                     onChange={e => setSelectedModel(e.target.value)}
                   >
