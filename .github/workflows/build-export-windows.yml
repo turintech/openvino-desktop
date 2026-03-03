@@ -26,7 +26,7 @@ jobs:
           Move-Item (Get-ChildItem python-tmp\cpython-* | Select-Object -First 1).FullName export
           Remove-Item python-tmp -Recurse -Force
           Remove-Item export\Lib\EXTERNALLY-MANAGED -Force -ErrorAction SilentlyContinue
-          uv pip install --python export\python.exe -r export-model\requirements.txt
+          uv pip install --system --python export\python.exe -r export-model\requirements.txt
 
       - name: Zip export folder
         run: Compress-Archive -Path export -DestinationPath export-windows.zip

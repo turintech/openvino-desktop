@@ -14,7 +14,7 @@ install:
 	uv python install 3.12 --install-dir python-tmp
 	powershell -Command "Remove-Item export -Recurse -Force -ErrorAction SilentlyContinue; Move-Item (Get-ChildItem python-tmp\cpython-* | Select-Object -First 1).FullName export; Remove-Item python-tmp -Recurse -Force"
 	powershell -Command "Remove-Item export\Lib\EXTERNALLY-MANAGED -Force -ErrorAction SilentlyContinue"
-	uv pip install --python export\python.exe -r export-model\requirements.txt
+	uv pip install --system --python export\python.exe -r export-model\requirements.txt
 
 export:
 	export\python.exe export-model\export_model.py $(ARGS)
