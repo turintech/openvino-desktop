@@ -16,6 +16,10 @@ export function PrepareOVMS():Promise<void>;
 
 export function PullModel(arg1:string):Promise<void>;
 
+export function ResetExport():Promise<void>;
+
+export function ResetOVMS():Promise<void>;
+
 export function SaveConfig(arg1:main.Config):Promise<void>;
 
 export function SearchModels(arg1:string,arg2:Array<string>):Promise<Array<main.HFModel>>;

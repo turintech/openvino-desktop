@@ -30,6 +30,14 @@ export function PullModel(arg1) {
   return window['go']['main']['App']['PullModel'](arg1);
 }
 
+export function ResetExport() {
+  return window['go']['main']['App']['ResetExport']();
+}
+
+export function ResetOVMS() {
+  return window['go']['main']['App']['ResetOVMS']();
+}
+
 export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
 }

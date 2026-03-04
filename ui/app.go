@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -19,7 +19,7 @@ import (
 var setupAssets embed.FS
 
 const (
-	defaultUvURL   = "https://github.com/astral-sh/uv/releases/download/0.7.3/uv-x86_64-pc-windows-msvc.zip"
+	defaultUvURL   = "https://github.com/astral-sh/uv/releases/download/0.10.8/uv-x86_64-pc-windows-msvc.zip"
 	defaultOvmsURL = "https://github.com/openvinotoolkit/model_server/releases/download/v2026.0/ovms_windows_python_on.zip"
 )
 
@@ -73,9 +73,9 @@ func configPath() string {
 func defaultConfig() Config {
 	home, _ := os.UserHomeDir()
 	return Config{
-		InstallDir: filepath.Join(home, "openvino-desk"),
-		UvURL:      defaultUvURL,
-		OvmsURL:    defaultOvmsURL,
+		InstallDir:      filepath.Join(home, "openvino-desk"),
+		UvURL:           defaultUvURL,
+		OvmsURL:         defaultOvmsURL,
 		SearchTags:      defaultSearchTags,
 		PipelineFilters: defaultPipelineFilters,
 		SearchLimit:     30,
@@ -241,7 +241,6 @@ func (a *App) SearchModels(query string, filters []string) ([]HFModel, error) {
 	return merged, nil
 }
 
-
 // PullModel downloads an OpenVINO model from Hugging Face using huggingface_hub.
 func (a *App) PullModel(modelID string) error {
 	if a.config.InstallDir == "" {
@@ -270,6 +269,30 @@ func (a *App) ExportModel(modelID string) error {
 	venvPython := filepath.Join(a.config.InstallDir, "export", "Scripts", "python.exe")
 	scriptPath := filepath.Join(a.config.InstallDir, "export-model-requirements", "export_model.py")
 	return setup.RunScript(a.config.InstallDir, a.emit, venvPython, scriptPath, "--model_id", modelID)
+}
+
+// ResetExport removes the uv binary, Python installation and export venv.
+func (a *App) ResetExport() error {
+	dirs := []string{
+		filepath.Join(a.config.InstallDir, "uv.exe"),
+		filepath.Join(a.config.InstallDir, "python"),
+		filepath.Join(a.config.InstallDir, "export"),
+	}
+	for _, d := range dirs {
+		if err := os.RemoveAll(d); err != nil {
+			return fmt.Errorf("remove %s: %w", d, err)
+		}
+	}
+	return nil
+}
+
+// ResetOVMS removes the OVMS server directory.
+func (a *App) ResetOVMS() error {
+	ovmsDir := filepath.Join(a.config.InstallDir, "ovms")
+	if err := os.RemoveAll(ovmsDir); err != nil {
+		return fmt.Errorf("remove ovms: %w", err)
+	}
+	return nil
 }
 
 // PrepareOVMS downloads and extracts the OVMS server.

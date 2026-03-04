@@ -511,3 +511,107 @@ body {
   padding: 40px 0;
   text-align: center;
 }
+
+/* Loading screen */
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #0f0f0f;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 520px;
+  padding: 32px;
+}
+
+.loading-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+.loading-step {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 40%;
+  background: #1d6ed8;
+  border-radius: 2px;
+  animation: progress-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+
+.loading-log {
+  height: 180px;
+  margin-top: 4px;
+}
+
+/* Not ready state */
+.not-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 60px 0;
+  color: #555;
+  font-size: 13px;
+}
+
+/* Reset buttons */
+.reset-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-reset {
+  background: #1a1a1a;
+  border: 1px solid #5a1a1a;
+  border-radius: 6px;
+  color: #ff6b6b;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-reset:hover:not(:disabled) {
+  background: #2a0a0a;
+  border-color: #aa3333;
+}
+
+.btn-reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Locked tab */
+.tab-locked {
+  opacity: 0.45;
+}
+
+.tab-lock-icon {
+  font-size: 10px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
