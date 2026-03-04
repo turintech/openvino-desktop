@@ -5,9 +5,14 @@ on:
     tags:
       - "export*"
 
+env:
+  OVMS_RELEASE: "2026/0"
+
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Set up Python 3.12
@@ -20,10 +25,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --target site-packages `
             --extra-index-url https://download.pytorch.org/whl/cpu `
-            -r https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2026/0/demos/common/export_models/requirements.txt
+            -r https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/${{ env.OVMS_RELEASE }}/demos/common/export_models/requirements.txt
+
+      - name: Download export_model.py
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/${{ env.OVMS_RELEASE }}/demos/common/export_models/export_model.py -OutFile export_model.py
 
       - name: Zip dependencies
-        run: Compress-Archive -Path site-packages -DestinationPath ${{ github.ref_name }}-windows-x64.zip
+        run: Compress-Archive -Path site-packages, export_model.py -DestinationPath ${{ github.ref_name }}-windows-x64.zip
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
