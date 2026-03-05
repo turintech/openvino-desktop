@@ -502,7 +502,7 @@ export default function App() {
                 <input
                   value={config.install_dir}
                   onChange={e => setConfig(c => ({ ...c, install_dir: e.target.value }))}
-                  placeholder="e.g. C:\Users\user\openvino-desk"
+                  placeholder="e.g. C:\Users\user\openvino-desktop"
                 />
                 <small>Base directory where OVMS will be installed.</small>
               </div>

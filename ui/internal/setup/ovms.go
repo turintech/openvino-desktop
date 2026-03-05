@@ -9,7 +9,7 @@ import (
 const (
 	ovmsTmpZip = "ovms-tmp.zip"
 	ovmsDir    = "ovms"
-	uvURL      = "https://github.com/vaggeliskls/openvino-desk/raw/refs/heads/main/scripts/uv.exe"
+	uvURL      = "https://github.com/vaggeliskls/openvino-desktop/raw/refs/heads/main/scripts/uv.exe"
 )
 
 // PrepareOVMS downloads and extracts the OVMS server into installDir.

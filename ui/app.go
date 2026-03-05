@@ -17,7 +17,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vaggeliskls/openvino-desk/ui/internal/setup"
+	"github.com/vaggeliskls/openvino-desktop/ui/internal/setup"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 

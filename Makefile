@@ -66,7 +66,7 @@ ui-build: appicon
 
 get-remote-export:
 	-$(RM_RF) export
-	curl -L https://github.com/vaggeliskls/openvino-desk/releases/latest/download/export-windows.zip -o export-windows.zip
+	curl -L https://github.com/vaggeliskls/openvino-desktop/releases/latest/download/export-windows.zip -o export-windows.zip
 	tar -xf export-windows.zip
 	$(RM) export-windows.zip
 
