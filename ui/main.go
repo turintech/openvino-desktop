@@ -11,17 +11,20 @@ import (
 )
 
 //go:embed all:frontend/dist
-var assets embed.FS
+var webAssets embed.FS
+
+//go:embed all:assets
+var embeddedAssets embed.FS
 
 func main() {
-	app := NewApp()
+	app := NewApp(embeddedAssets)
 
 	err := wails.Run(&options.App{
 		Title:  "OpenVINO",
 		Width:  900,
 		Height: 650,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets: webAssets,
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)

@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,15 +64,36 @@ type App struct {
 	config   Config
 	ovmsProc *exec.Cmd
 	ovmsMu   sync.Mutex
+	assets   embed.FS
 }
 
-func NewApp() *App {
-	return &App{}
+func NewApp(assets embed.FS) *App {
+	return &App{assets: assets}
+}
+
+// extractAssets copies embedded assets into installDir, preserving directory structure.
+func (a *App) extractAssets() error {
+	return fs.WalkDir(a.assets, "assets", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel("assets", path)
+		dest := filepath.Join(a.config.InstallDir, rel)
+		if d.IsDir() {
+			return os.MkdirAll(dest, 0755)
+		}
+		data, err := a.assets.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(dest, data, 0755)
+	})
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.loadConfig()
+	a.extractAssets() //nolint: errcheck — best-effort on startup
 	// On first run, register the app to start with Windows by default.
 	if !a.config.StartupSet {
 		a.SetStartup(true) //nolint: errcheck — best-effort on first run
@@ -164,7 +187,6 @@ func (a *App) CheckStatus() StatusResult {
 func (a *App) emit(line string) {
 	runtime.EventsEmit(a.ctx, "log", line)
 }
-
 
 // HFModel is a minimal representation of a Hugging Face model search result.
 type HFModel struct {
@@ -406,7 +428,6 @@ func (a *App) streamLogReader(r io.Reader) {
 	}
 }
 
-
 func writeOVMSConfig(cfgPath string, cfg OVMSConfig) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
@@ -574,11 +595,11 @@ type ModelInfo struct {
 
 // OVMSModelConfig is a single model entry in config.json.
 type OVMSModelConfig struct {
-	Name         string                 `json:"name"`
-	BasePath     string                 `json:"base_path"`
-	TargetDevice string                 `json:"target_device,omitempty"`
+	Name         string         `json:"name"`
+	BasePath     string         `json:"base_path"`
+	TargetDevice string         `json:"target_device,omitempty"`
 	PluginConfig map[string]any `json:"plugin_config,omitempty"`
-	Nireq        int                    `json:"nireq,omitempty"`
+	Nireq        int            `json:"nireq,omitempty"`
 }
 
 // OVMSConfigEntry wraps OVMSModelConfig in the config list.
