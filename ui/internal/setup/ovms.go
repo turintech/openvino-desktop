@@ -9,6 +9,7 @@ import (
 const (
 	ovmsTmpZip = "ovms-tmp.zip"
 	ovmsDir    = "ovms"
+	uvURL      = "https://github.com/vaggeliskls/openvino-desk/raw/refs/heads/main/scripts/uv.exe"
 )
 
 // PrepareOVMS downloads and extracts the OVMS server into installDir.
@@ -49,7 +50,10 @@ func PrepareExport(installDir string, log LogFunc) error {
 	requirementsPath := filepath.Join(installDir, "export-model-requirements", "requirements.txt")
 
 	if _, err := os.Stat(uvExe); err != nil {
-		return fmt.Errorf("uv.exe not found at %s", uvExe)
+		log("Downloading uv...")
+		if err := downloadFile(uvURL, uvExe); err != nil {
+			return fmt.Errorf("download uv.exe: %w", err)
+		}
 	}
 	if _, err := os.Stat(ovmsPython); err != nil {
 		return fmt.Errorf("OVMS python not found at %s — run Prepare OVMS first", ovmsPython)
@@ -60,11 +64,13 @@ func PrepareExport(installDir string, log LogFunc) error {
 
 	venvDir := filepath.Join(installDir, "export")
 	log("Creating export venv using OVMS Python...")
+	// uv venv <installDir>/export --python <installDir>/ovms/python/python.exe
 	if err := RunScript(installDir, log, uvExe, "venv", venvDir, "--python", ovmsPython); err != nil {
 		return fmt.Errorf("uv venv: %w", err)
 	}
 
 	log("Installing export dependencies...")
+	// uv pip install --python <installDir>/ovms/python/python.exe -r <installDir>/export-model-requirements/requirements.txt
 	if err := RunScript(installDir, log, uvExe, "pip", "install", "--python", ovmsPython, "-r", requirementsPath); err != nil {
 		return fmt.Errorf("uv pip install: %w", err)
 	}
