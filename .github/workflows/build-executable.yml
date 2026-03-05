@@ -33,8 +33,11 @@ jobs:
           Copy-Item ui\appicon.png ui\build\appicon.png
           Copy-Item ui\logo.ico ui\build\windows\icon.ico
 
+      - name: Install UPX
+        run: choco install upx -y
+
       - name: Build executable
-        run: cd ui && wails build
+        run: cd ui && wails build -upx
 
       - name: Rename executable with tag
         run: Move-Item ui\build\bin\openvino-desktop.exe ui\build\bin\openvino-desktop-${{ github.ref_name }}.exe
