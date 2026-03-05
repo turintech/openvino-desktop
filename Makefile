@@ -65,15 +65,16 @@ ui-assets:
 	-$(MKDIR_P) ui$(PATHSEP)assets$(PATHSEP)export-model-requirements
 	$(CP) export-model-requirements$(PATHSEP)requirements.txt ui$(PATHSEP)assets$(PATHSEP)export-model-requirements$(PATHSEP)requirements.txt
 	$(CP) export-model-requirements$(PATHSEP)export_model.py ui$(PATHSEP)assets$(PATHSEP)export-model-requirements$(PATHSEP)export_model.py
+	$(CP) $(UV_BIN) ui$(PATHSEP)assets$(PATHSEP)$(UV_BIN)
 
 appicon:
 	$(CP) ui$(PATHSEP)appicon.png ui$(PATHSEP)build$(PATHSEP)appicon.png
 	$(CP) ui$(PATHSEP)logo.ico ui$(PATHSEP)build$(PATHSEP)windows$(PATHSEP)icon.ico
 
-ui-dev: appicon
+ui-dev: ui-assets appicon
 	cd ui && wails dev
 
-ui-build: appicon
+ui-build: ui-assets appicon
 	cd ui && wails build
 
 get-remote-export:
