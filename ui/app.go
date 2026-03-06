@@ -305,15 +305,15 @@ func (a *App) PullModel(modelID, targetDevice, pipelineTag string) error {
 
 // ExportTextGen exports a text-generation model using export_model.py.
 func (a *App) ExportTextGen(modelID, targetDevice string, extraOpts map[string]any) error {
-	return a.exportWithScript(modelID, "text_generation", extraOpts)
+	return a.exportWithScript(modelID, targetDevice, "text_generation", extraOpts)
 }
 
 // ExportEmbeddings exports an embeddings model using export_model.py.
 func (a *App) ExportEmbeddings(modelID, targetDevice string, extraOpts map[string]any) error {
-	return a.exportWithScript(modelID, "embeddings_ov", extraOpts)
+	return a.exportWithScript(modelID, targetDevice, "embeddings_ov", extraOpts)
 }
 
-func (a *App) exportWithScript(modelID, task string, extraOpts map[string]any) error {
+func (a *App) exportWithScript(modelID, targetDevice, task string, extraOpts map[string]any) error {
 	if a.config.InstallDir == "" {
 		return fmt.Errorf("install directory is not configured")
 	}
@@ -342,6 +342,9 @@ func (a *App) exportWithScript(modelID, task string, extraOpts map[string]any) e
 		"--model_repository_path", modelsDir,
 		"--model_name", modelID,
 	}
+	if targetDevice != "" {
+		args = append(args, "--target_device", targetDevice)
+	}
 	for k, v := range extraOpts {
 		switch val := v.(type) {
 		case bool:
@@ -363,24 +366,34 @@ func (a *App) exportWithScript(modelID, task string, extraOpts map[string]any) e
 	cmd.Dir = ovmsDirPath
 	cmd.Env = buildOVMSEnv(ovmsDirPath)
 
-	return a.streamCmd(cmd)
+	if err := a.streamCmd(cmd); err != nil {
+		return err
+	}
+	ovmsExe := filepath.Join(ovmsDirPath, "ovms.exe")
+	return a.ovmsAddToConfig(ovmsExe, ovmsDirPath, modelID, modelsDir, targetDevice)
 }
 
-func (a *App) ovmsAddToConfig(ovmsExe, ovmsDirPath, modelID, modelsDir, targetDevice string) error {
+func (a *App) ovmsAddToConfig(_, _, modelID, modelsDir, targetDevice string) error {
 	cfgPath := filepath.Join(a.config.InstallDir, "config.json")
-	args := []string{
-		"--add_to_config", cfgPath,
-		"--model_name", modelID,
-		"--model_repository_path", modelsDir,
+	var cfg OVMSConfig
+	if data, err := os.ReadFile(cfgPath); err == nil {
+		json.Unmarshal(data, &cfg) //nolint: errcheck — start fresh on parse error
 	}
-	if targetDevice != "" {
-		args = append(args, "--target_device", targetDevice)
+	for _, e := range cfg.ModelConfigList {
+		if e.Config.Name == modelID {
+			a.emit("Model already in config.json, skipping.")
+			return nil
+		}
 	}
-	a.emit("$ " + ovmsExe + " " + strings.Join(args, " "))
-	cmd := exec.Command(ovmsExe, args...)
-	cmd.Dir = ovmsDirPath
-	cmd.Env = buildOVMSEnv(ovmsDirPath)
-	return a.streamCmd(cmd)
+	cfg.ModelConfigList = append(cfg.ModelConfigList, OVMSConfigEntry{
+		Config: OVMSModelConfig{
+			Name:         modelID,
+			BasePath:     filepath.Join(modelsDir, modelID),
+			TargetDevice: targetDevice,
+		},
+	})
+	a.emit("Adding " + modelID + " to config.json")
+	return writeOVMSConfig(cfgPath, cfg)
 }
 
 func (a *App) streamCmd(cmd *exec.Cmd) error {

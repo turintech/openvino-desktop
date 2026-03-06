@@ -55,6 +55,7 @@ build-cli:
 	cd cli && go build -o ../openvino-cli.exe .
 
 appicon:
+	-$(MKDIR_P) ui$(PATHSEP)build$(PATHSEP)windows
 	$(CP) ui$(PATHSEP)appicon.png ui$(PATHSEP)build$(PATHSEP)appicon.png
 	$(CP) ui$(PATHSEP)logo.ico ui$(PATHSEP)build$(PATHSEP)windows$(PATHSEP)icon.ico
 

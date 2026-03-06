@@ -38,7 +38,6 @@ export function PrepareOVMS() {
   return window['go']['main']['App']['PrepareOVMS']();
 }
 
-/** @param {string} arg1 @param {string} arg2 @param {string} arg3 */
 export function PullModel(arg1, arg2, arg3) {
   return window['go']['main']['App']['PullModel'](arg1, arg2, arg3);
 }

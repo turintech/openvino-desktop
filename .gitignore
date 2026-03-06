@@ -6,3 +6,4 @@ ui/build/
 dist
 node_modules
 .DS_Store
+package.json.md5
