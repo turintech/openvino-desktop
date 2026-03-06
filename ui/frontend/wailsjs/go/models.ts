@@ -10,6 +10,7 @@ export namespace main {
 	    search_limit: number;
 	    text_gen_target_device: string;
 	    embeddings_target_device: string;
+	    api_port: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -26,6 +27,7 @@ export namespace main {
 	        this.search_limit = source["search_limit"];
 	        this.text_gen_target_device = source["text_gen_target_device"];
 	        this.embeddings_target_device = source["embeddings_target_device"];
+	        this.api_port = source["api_port"];
 	    }
 	}
 	export class HFModel {

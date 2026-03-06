@@ -41,6 +41,7 @@ type Config struct {
 	SearchLimit            int      `json:"search_limit"`
 	TextGenTargetDevice    string   `json:"text_gen_target_device"`
 	EmbeddingsTargetDevice string   `json:"embeddings_target_device"`
+	APIPort                int      `json:"api_port"`
 }
 
 // StatusResult reports whether each component is ready.
@@ -101,6 +102,7 @@ func (a *App) startup(ctx context.Context) {
 	hideWindow(tk)
 	tk.Run() //nolint: errcheck
 	a.extractAssets() //nolint: errcheck — best-effort on startup
+	a.startAPIServer(ctx)
 	// On first run, register the app to start with Windows by default.
 	if !a.config.StartupSet {
 		a.SetStartup(true) //nolint: errcheck — best-effort on first run
@@ -128,6 +130,7 @@ func defaultConfig() Config {
 		SearchLimit:            30,
 		TextGenTargetDevice:    "GPU",
 		EmbeddingsTargetDevice: "GPU",
+		APIPort:                3333,
 	}
 }
 
@@ -162,6 +165,9 @@ func (a *App) loadConfig() {
 	}
 	if a.config.EmbeddingsTargetDevice == "" {
 		a.config.EmbeddingsTargetDevice = "GPU"
+	}
+	if a.config.APIPort == 0 {
+		a.config.APIPort = 3333
 	}
 }
 

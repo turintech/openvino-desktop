@@ -26,6 +26,7 @@ export default function App() {
     install_dir: '',
     ovms_url: '',
     uv_url: '',
+    api_port: 3333,
     search_tags: [],
     pipeline_filters: [],
     search_limit: 30,
@@ -205,6 +206,7 @@ export default function App() {
   }
 
   const handleReset = async () => {
+    if (!window.confirm('This will delete the OVMS installation and re-download it. Continue?')) return
     setStatus(null)
     setRunning(true)
     try {
@@ -542,6 +544,18 @@ export default function App() {
                   placeholder="https://github.com/turintech/openvino-desktop/releases/download/uv/uv.exe"
                 />
                 <small>URL to download uv.exe used for setting up the export environment.</small>
+              </div>
+
+              <div className="field">
+                <label>REST API Port</label>
+                <input
+                  type="number"
+                  min="1024"
+                  max="65535"
+                  value={config.api_port}
+                  onChange={e => setConfig(c => ({ ...c, api_port: parseInt(e.target.value) || 3333 }))}
+                />
+                <small>Port for the local REST API (default: 3333). Requires restart to take effect.</small>
               </div>
 
             </div>
