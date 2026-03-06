@@ -9,7 +9,7 @@ numpy==2.2.6
 openvino-tokenizers==2026.0.0
 openvino==2026.0.0
 #optimum is in dependency list of optimum-intel
-pillow==12.0.0
+pillow==12.1.1
 sentence_transformers
 sentencepiece
 timm==1.0.25
