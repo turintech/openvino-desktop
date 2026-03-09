@@ -29,6 +29,7 @@ func (a *App) startAPIServer(ctx context.Context) {
 	mux.HandleFunc("GET /models/test", a.apiTestModels)
 	mux.HandleFunc("POST /models/pull", a.apiPull)
 	mux.HandleFunc("POST /models/export", a.apiExport)
+	mux.HandleFunc("DELETE /models/{model_name}", a.apiDeleteModel)
 	mux.HandleFunc("GET /job", apiJobStatus)
 
 	addr := ":" + strconv.Itoa(a.config.APIPort)
@@ -193,6 +194,19 @@ func (a *App) apiTestModels(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, results)
 }
 
+
+func (a *App) apiDeleteModel(w http.ResponseWriter, r *http.Request) {
+	modelName := r.PathValue("model_name")
+	if modelName == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "model_name is required"})
+		return
+	}
+	if err := a.DeleteInstalledModel(modelName); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
 
 func apiJobStatus(w http.ResponseWriter, _ *http.Request) {
 	busy := globalJob.busy.Load()
