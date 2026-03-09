@@ -12,10 +12,12 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/turintech/openvino-desktop/ui/internal/setup"
@@ -110,6 +112,23 @@ func (a *App) startup(ctx context.Context) {
 		a.config.StartupSet = true
 		a.SaveConfig(a.config) //nolint: errcheck
 	}
+	// Gracefully shut down child processes on OS signals (e.g. Task Manager, Ctrl+C).
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+		<-sigCh
+		a.shutdown()
+		os.Exit(0)
+	}()
+}
+
+// shutdown stops OVMS and all child processes before the application exits.
+func (a *App) shutdown() {
+	a.stopAndWait()
+	// Belt-and-suspenders: kill any ovms.exe still running.
+	tk := exec.Command("taskkill", "/F", "/T", "/IM", "ovms.exe")
+	hideWindow(tk)
+	tk.Run() //nolint: errcheck
 }
 
 func defaultInstallDir() string {

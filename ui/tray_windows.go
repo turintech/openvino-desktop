@@ -15,7 +15,7 @@ import (
 //go:embed logo.ico
 var trayIcon []byte
 
-func startTray(ctx context.Context) {
+func startTray(ctx context.Context, app *App) {
 	goruntime.LockOSThread()
 	systray.Run(
 		func() {
@@ -32,6 +32,7 @@ func startTray(ctx context.Context) {
 					runtime.WindowShow(ctx)
 					runtime.WindowUnminimise(ctx)
 				case <-mQuit.ClickedCh:
+					app.shutdown()
 					systray.Quit()
 					os.Exit(0)
 				}

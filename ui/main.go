@@ -28,7 +28,7 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
-			go startTray(ctx)
+			go startTray(ctx, app)
 		},
 		// Hide the window instead of quitting when the user clicks the close button.
 		OnBeforeClose: func(ctx context.Context) bool {

@@ -70,8 +70,8 @@ func PrepareExport(installDir, uvDownloadURL string, log LogFunc) error {
 
 	venvDir := filepath.Join(installDir, "export")
 	log("Creating export venv using OVMS Python...")
-	// uv venv <installDir>/export --python <installDir>/ovms/python/python.exe
-	if err := RunScript(installDir, log, uvExe, "venv", venvDir, "--python", ovmsPython); err != nil {
+	// uv venv <installDir>/export --python <installDir>/ovms/python/python.exe --clear
+	if err := RunScript(installDir, log, uvExe, "venv", venvDir, "--python", ovmsPython, "--clear"); err != nil {
 		return fmt.Errorf("uv venv: %w", err)
 	}
 
