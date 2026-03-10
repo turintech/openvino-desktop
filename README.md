@@ -65,13 +65,13 @@ Returns the list of installed models.
 ]
 ```
 
-The `task` field is the HuggingFace pipeline tag (`"text-generation"` or `"feature-extraction"`) stored at pull/export time.
+The `task` field is the HuggingFace pipeline tag (`"text-generation"`, `"feature-extraction"`, or `"sentence-similarity"`) stored at pull/export time.
 
 #### `GET /models/test`
 Sends a short prompt to every installed model via the OVMS inference API and returns the results. Useful for verifying all models are loaded and responding.
 
 - `"text-generation"` models are tested via `POST /v3/chat/completions` with `"hello"`
-- `"feature-extraction"` models are tested via `POST /v3/embeddings` with `"hello"`
+- `"feature-extraction"` and `"sentence-similarity"` models are tested via `POST /v3/embeddings` with `"hello"`
 
 ```bash
 curl http://localhost:3333/models/test
@@ -113,7 +113,7 @@ curl -X POST http://localhost:3333/models/pull \
 
 | Field | Values |
 |-------|--------|
-| `pipeline_tag` | `"text-generation"` or `"feature-extraction"` |
+| `pipeline_tag` | `"text-generation"`, `"feature-extraction"`, or `"sentence-similarity"` |
 | `target_device` | `"CPU"`, `"GPU"`, `"NPU"`, `"AUTO"` |
 
 #### `POST /models/export`
@@ -122,12 +122,12 @@ Exports and converts a model from Hugging Face using `export_model.py`. Returns 
 ```bash
 curl -X POST http://localhost:3333/models/export \
   -H "Content-Type: application/json" \
-  -d '{"model_id": "Qwen/Qwen3-Embedding-0.6B", "target_device": "CPU", "task": "feature-extraction", "extra_opts": {"weight-format": "int8"}}'
+  -d '{"model_id": "Qwen/Qwen3-Embedding-0.6B", "target_device": "CPU", "task": "sentence-similarity", "extra_opts": {"weight-format": "fp16", "extra_quantization_params": "--library sentence_transformers"}}'
 ```
 
 | Field | Values |
 |-------|--------|
-| `task` | `"text-generation"` or `"feature-extraction"` |
+| `task` | `"text-generation"`, `"feature-extraction"`, or `"sentence-similarity"` |
 | `target_device` | `"CPU"`, `"GPU"`, `"NPU"`, `"AUTO"` |
 | `extra_opts` | Optional key/value pairs passed as CLI flags to `export_model.py` |
 
