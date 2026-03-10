@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
+const DEFAULT_OPTS_TEXT_GEN = '{\n  "weight-format": "int8"\n}'
+const DEFAULT_OPTS_EMBEDDING = '{\n  "weight-format": "fp16",\n  "extra_quantization_params": "--library sentence_transformers"\n}'
+
 const PROGRESS_MAP = {
   'Downloading OVMS': 15,
   'Extracting OVMS': 25,
@@ -51,7 +54,7 @@ export default function App() {
 
   const [targetDevice, setTargetDevice] = useState('GPU')
   const [availableDevices, setAvailableDevices] = useState(['CPU', 'GPU', 'NPU', 'AUTO'])
-  const [extraOptsText, setExtraOptsText] = useState('{\n  "weight-format": "int8"\n}')
+  const [extraOptsText, setExtraOptsText] = useState(DEFAULT_OPTS_TEXT_GEN)
   const [extraOptsError, setExtraOptsError] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -167,8 +170,8 @@ export default function App() {
     }
     if (tag === 'text-generation') setTargetDevice(clamp(config.text_gen_target_device || 'GPU'))
     else if (tag === 'feature-extraction' || tag === 'sentence-similarity') setTargetDevice(clamp(config.embeddings_target_device || 'GPU'))
-    const defaultFormat = (tag === 'feature-extraction' || tag === 'sentence-similarity') ? 'fp16' : 'int8'
-    setExtraOptsText(`{\n  "weight-format": "${defaultFormat}"\n}`)
+    const isEmbedding = tag === 'feature-extraction' || tag === 'sentence-similarity'
+    setExtraOptsText(isEmbedding ? DEFAULT_OPTS_EMBEDDING : DEFAULT_OPTS_TEXT_GEN)
     setExtraOptsError(false)
   }, [selectedModel, searchResults, availableDevices])
 
