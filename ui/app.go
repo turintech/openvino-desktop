@@ -31,7 +31,6 @@ const (
 
 // Config holds user-configurable settings.
 var defaultSearchTags = []string{"OpenVINO", "Qwen", "Embedding"}
-var defaultPipelineFilters = []string{"text-generation", "feature-extraction"}
 
 type Config struct {
 	InstallDir             string   `json:"install_dir"`
@@ -39,7 +38,6 @@ type Config struct {
 	UvURL                  string   `json:"uv_url"`
 	StartupSet             bool     `json:"startup_set"`
 	SearchTags             []string `json:"search_tags"`
-	PipelineFilters        []string `json:"pipeline_filters"`
 	SearchLimit            int      `json:"search_limit"`
 	TextGenTargetDevice    string   `json:"text_gen_target_device"`
 	EmbeddingsTargetDevice string   `json:"embeddings_target_device"`
@@ -146,7 +144,6 @@ func defaultConfig() Config {
 		OvmsURL:                defaultOvmsURL,
 		UvURL:                  defaultUvURL,
 		SearchTags:             defaultSearchTags,
-		PipelineFilters:        defaultPipelineFilters,
 		SearchLimit:            30,
 		TextGenTargetDevice:    "GPU",
 		EmbeddingsTargetDevice: "GPU",
@@ -175,10 +172,7 @@ func (a *App) loadConfig() {
 	if len(a.config.SearchTags) == 0 {
 		a.config.SearchTags = defaultSearchTags
 	}
-	if len(a.config.PipelineFilters) == 0 {
-		a.config.PipelineFilters = defaultPipelineFilters
-	}
-	if a.config.SearchLimit == 0 {
+if a.config.SearchLimit == 0 {
 		a.config.SearchLimit = 30
 	}
 	if a.config.TextGenTargetDevice == "" {
@@ -198,6 +192,15 @@ func (a *App) loadConfig() {
 // GetConfig returns the current configuration.
 func (a *App) GetConfig() Config {
 	return a.config
+}
+
+// GetPipelineFilters returns the supported pipeline filter types.
+func (a *App) GetPipelineFilters() []string {
+	filters := make([]string, 0, len(pipelineDefs))
+	for k := range pipelineDefs {
+		filters = append(filters, k)
+	}
+	return filters
 }
 
 // SaveConfig persists the configuration to disk.
@@ -320,8 +323,9 @@ type pipelineDef struct {
 
 // pipelineDefs is the single source of truth for supported pipeline types.
 var pipelineDefs = map[string]pipelineDef{
-	"text-generation":    {PullTask: "text_generation", ExportTask: "text_generation", IsEmbedding: false},
-	"feature-extraction": {PullTask: "embeddings", ExportTask: "embeddings_ov", IsEmbedding: true},
+	"text-generation":     {PullTask: "text_generation", ExportTask: "text_generation", IsEmbedding: false},
+	"image-text-to-text":  {PullTask: "text_generation", ExportTask: "text_generation", IsEmbedding: false},
+	"feature-extraction":  {PullTask: "embeddings", ExportTask: "embeddings_ov", IsEmbedding: true},
 }
 
 // PullModel downloads an OpenVINO model from Hugging Face using OVMS --pull.

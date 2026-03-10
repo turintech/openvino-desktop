@@ -18,6 +18,8 @@ export function GetConfig():Promise<main.Config>;
 
 export function GetInstalledModels():Promise<Array<main.ModelInfo>>;
 
+export function GetPipelineFilters():Promise<Array<string>>;
+
 export function GetStartupEnabled():Promise<boolean>;
 
 export function IsOVMSRunning():Promise<boolean>;

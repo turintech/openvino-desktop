@@ -34,6 +34,10 @@ export function GetInstalledModels() {
   return window['go']['main']['App']['GetInstalledModels']();
 }
 
+export function GetPipelineFilters() {
+  return window['go']['main']['App']['GetPipelineFilters']();
+}
+
 export function GetStartupEnabled() {
   return window['go']['main']['App']['GetStartupEnabled']();
 }

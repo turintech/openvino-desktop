@@ -448,11 +448,24 @@ body {
   color: #fff;
 }
 
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.filter-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+}
+
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 8px;
 }
 
 .filter-chip {
@@ -480,7 +493,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 8px;
 }
 
 .search-tag {
@@ -893,6 +905,12 @@ body {
 
 .opts-raw-editor::selection {
   background: #264f78;
+}
+
+.unsupported-model-msg {
+  font-size: 12px;
+  color: #e8a040;
+  align-self: center;
 }
 
 .opts-editor-error-msg {

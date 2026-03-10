@@ -6,7 +6,6 @@ export namespace main {
 	    uv_url: string;
 	    startup_set: boolean;
 	    search_tags: string[];
-	    pipeline_filters: string[];
 	    search_limit: number;
 	    text_gen_target_device: string;
 	    embeddings_target_device: string;
@@ -24,7 +23,6 @@ export namespace main {
 	        this.uv_url = source["uv_url"];
 	        this.startup_set = source["startup_set"];
 	        this.search_tags = source["search_tags"];
-	        this.pipeline_filters = source["pipeline_filters"];
 	        this.search_limit = source["search_limit"];
 	        this.text_gen_target_device = source["text_gen_target_device"];
 	        this.embeddings_target_device = source["embeddings_target_device"];
