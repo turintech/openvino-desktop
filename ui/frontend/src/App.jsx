@@ -434,6 +434,12 @@ export default function App() {
                                 <span className="device-label">Target Device:</span>
                                 <span className="device-value">{model.target_device}</span>
                               </div>
+                              {model.task && (
+                                <div className="installed-model-device">
+                                  <span className="device-label">Type:</span>
+                                  <span className="device-value">{model.task}</span>
+                                </div>
+                              )}
                             </div>
                             <button
                               className="btn-delete-model"
@@ -441,7 +447,9 @@ export default function App() {
                               onClick={() => handleDeleteModel(model.name)}
                               title="Delete model"
                             >
-                              🗑️
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                              </svg>
                             </button>
                           </div>
                         ))}
@@ -461,25 +469,41 @@ export default function App() {
                         </div>
                       </div>
                     )}
-                    {pipelineFilters.length > 0 && (
-                      <div className="filter-group">
-                        <span className="filter-label">Filter by type</span>
-                        <div className="filter-chips">
-                          {pipelineFilters.map(f => {
-                            const active = (activeFilters || []).includes(f)
-                            return (
-                              <button
-                                key={f}
-                                className={`filter-chip ${active ? 'active' : ''}`}
-                                onClick={() => toggleFilter(f)}
-                              >
-                                {f}
-                              </button>
-                            )
-                          })}
+                    {pipelineFilters.length > 0 && (() => {
+                      const textTypes = ['text-generation', 'image-text-to-text']
+                      const embeddingTypes = ['feature-extraction', 'sentence-similarity']
+                      const groups = [
+                        { label: 'Text', types: textTypes },
+                        { label: 'Embeddings', types: embeddingTypes },
+                      ].map(g => ({ ...g, types: g.types.filter(t => pipelineFilters.includes(t)) }))
+                       .filter(g => g.types.length > 0)
+                      return (
+                        <div className="filter-group">
+                          <span className="filter-label">Filter by type</span>
+                          <div className="filter-chips-grouped">
+                            {groups.map(g => (
+                              <div key={g.label} className="filter-chip-group">
+                                <span className="filter-chip-group-label">{g.label}</span>
+                                <div className="filter-chips">
+                                  {g.types.map(f => {
+                                    const active = (activeFilters || []).includes(f)
+                                    return (
+                                      <button
+                                        key={f}
+                                        className={`filter-chip ${active ? 'active' : ''}`}
+                                        onClick={() => toggleFilter(f)}
+                                      >
+                                        {f}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )
+                    })()}
                     <div className="search-row">
                       <input
                         className="search-input"

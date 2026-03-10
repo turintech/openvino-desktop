@@ -424,8 +424,10 @@ body {
   border: 1px solid #5a1a1a;
   border-radius: 4px;
   color: #ff6b6b;
-  padding: 6px 10px;
-  font-size: 16px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
@@ -466,6 +468,25 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.filter-chips-grouped {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-chip-group-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666;
 }
 
 .filter-chip {

@@ -326,6 +326,7 @@ var pipelineDefs = map[string]pipelineDef{
 	"text-generation":     {PullTask: "text_generation", ExportTask: "text_generation", IsEmbedding: false},
 	"image-text-to-text":  {PullTask: "text_generation", ExportTask: "text_generation", IsEmbedding: false},
 	"feature-extraction":  {PullTask: "embeddings", ExportTask: "embeddings_ov", IsEmbedding: true},
+	"sentence-similarity": {PullTask: "embeddings", ExportTask: "embeddings_ov", IsEmbedding: true},
 }
 
 // PullModel downloads an OpenVINO model from Hugging Face using OVMS --pull.
