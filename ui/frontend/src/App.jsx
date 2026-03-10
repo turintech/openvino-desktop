@@ -532,20 +532,25 @@ export default function App() {
                         <div className="search-actions">
                           <button
                             className="btn-primary"
-                            disabled={running || !selectedModel || extraOptsError}
+                            disabled={running || !selectedModel || extraOptsError || (!isSelectedOV && !pipelineFilters.includes(selectedModelInfo?.pipeline_tag))}
                             onClick={() => {
                               if (isSelectedOV) {
                                 run(() => PullModel(selectedModel, targetDevice, selectedModelInfo?.pipeline_tag ?? ''))
                               } else {
                                 const extraOpts = (() => { try { return JSON.parse(extraOptsText) } catch { return {} } })()
                                 const tag = selectedModelInfo?.pipeline_tag
-                                if (tag === 'text-generation') run(() => ExportTextGen(selectedModel, targetDevice, extraOpts))
+                                if (tag === 'text-generation' || tag === 'image-text-to-text') run(() => ExportTextGen(selectedModel, targetDevice, extraOpts))
                                 else if (tag === 'feature-extraction') run(() => ExportEmbeddings(selectedModel, targetDevice, extraOpts))
                               }
                             }}
                           >
                             {running ? 'Running…' : isSelectedOV ? 'Pull' : 'Export'}
                           </button>
+                          {selectedModel && !isSelectedOV && !pipelineFilters.includes(selectedModelInfo?.pipeline_tag) && (
+                            <span className="unsupported-model-msg">
+                              Model type "{selectedModelInfo?.pipeline_tag || 'unknown'}" is not supported
+                            </span>
+                          )}
                           {selectedModel && (
                             <button
                               className="btn-hf-link"

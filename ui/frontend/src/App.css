@@ -907,6 +907,12 @@ body {
   background: #264f78;
 }
 
+.unsupported-model-msg {
+  font-size: 12px;
+  color: #e8a040;
+  align-self: center;
+}
+
 .opts-editor-error-msg {
   margin-top: 6px;
   padding: 6px 10px;
