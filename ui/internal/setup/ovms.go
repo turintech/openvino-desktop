@@ -77,7 +77,7 @@ func PrepareExport(installDir, uvDownloadURL string, log LogFunc) error {
 
 	log("Installing export dependencies...")
 	// uv pip install --python <installDir>/ovms/python/python.exe -r <installDir>/export-model-requirements/requirements.txt
-	if err := RunScript(installDir, log, uvExe, "pip", "install", "--pre", "--index-strategy", "unsafe-best-match", "--python", ovmsPython, "-r", requirementsPath); err != nil {
+	if err := RunScript(installDir, log, uvExe, "pip", "install", "--python", ovmsPython, "-r", requirementsPath); err != nil {
 		return fmt.Errorf("uv pip install: %w", err)
 	}
 
