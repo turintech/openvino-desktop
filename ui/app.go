@@ -641,7 +641,12 @@ func (a *App) PrepareOVMS() error {
 	if err := setup.PrepareOVMS(a.config.InstallDir, a.config.OvmsURL, a.emit); err != nil {
 		return err
 	}
-	return setup.PrepareExport(a.config.InstallDir, a.config.UvURL, a.emit)
+	if err := setup.PrepareExport(a.config.InstallDir, a.config.UvURL, a.emit); err != nil {
+		return err
+	}
+	a.emit("Setup complete. Starting OVMS server...")
+	a.StartOVMS() //nolint: errcheck
+	return nil
 }
 
 // buildOVMSEnv constructs the process environment for running ovms.exe.
