@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // job tracks an async pull/export operation.
@@ -93,6 +95,7 @@ func (a *App) apiPull(w http.ResponseWriter, r *http.Request) {
 		} else {
 			globalJob.lastErr = ""
 			globalJob.lastOK = true
+			runtime.EventsEmit(a.ctx, "models-changed", nil)
 		}
 		globalJob.mu.Unlock()
 	}()
@@ -126,6 +129,7 @@ func (a *App) apiExport(w http.ResponseWriter, r *http.Request) {
 		} else {
 			globalJob.lastErr = ""
 			globalJob.lastOK = true
+			runtime.EventsEmit(a.ctx, "models-changed", nil)
 		}
 		globalJob.mu.Unlock()
 	}()
@@ -205,6 +209,7 @@ func (a *App) apiDeleteModel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	runtime.EventsEmit(a.ctx, "models-changed", nil)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 

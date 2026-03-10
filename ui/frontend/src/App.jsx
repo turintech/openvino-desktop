@@ -92,10 +92,14 @@ export default function App() {
     const offServerStatus = EventsOn('server-status', running => {
       setServerRunning(running)
     })
+    const offModelsChanged = EventsOn('models-changed', () => {
+      loadInstalledModels()
+    })
     IsOVMSRunning().then(setServerRunning)
     return () => {
       if (offServerLog) offServerLog()
       if (offServerStatus) offServerStatus()
+      if (offModelsChanged) offModelsChanged()
     }
   }, [])
 
