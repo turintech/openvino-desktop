@@ -581,7 +581,7 @@ export default function App() {
         )}
 
         {tab === 'chat' && (() => {
-          const textGenModels = installedModels.filter(m => m.task === 'text-generation')
+          const textGenModels = installedModels.filter(m => m.task === 'text-generation' || m.task === 'image-text-to-text')
           const chatDisabled = !serverRunning || textGenModels.length === 0
 
           return (
@@ -593,7 +593,7 @@ export default function App() {
               )}
               {serverRunning && textGenModels.length === 0 && (
                 <div className="chat-notice chat-notice--warn">
-                  No text-generation models installed. Go to the <strong>Models</strong> tab to pull or export one.
+                  No text-generation or image-text-to-text models installed. Go to the <strong>Models</strong> tab to pull or export one.
                 </div>
               )}
 
