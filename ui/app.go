@@ -110,11 +110,6 @@ func (a *App) startup(ctx context.Context) {
 		a.config.StartupSet = true
 		a.SaveConfig(a.config) //nolint: errcheck
 	}
-	// If setup was previously completed, start the OVMS server automatically.
-	marker := filepath.Join(a.config.InstallDir, ".deps-ready")
-	if _, err := os.Stat(marker); err == nil {
-		go a.StartOVMS() //nolint: errcheck
-	}
 	// Gracefully shut down child processes on OS signals (e.g. Task Manager, Ctrl+C).
 	go func() {
 		sigCh := make(chan os.Signal, 1)
@@ -123,6 +118,15 @@ func (a *App) startup(ctx context.Context) {
 		a.shutdown()
 		os.Exit(0)
 	}()
+}
+
+// domReady is called after the frontend is mounted and ready to receive events.
+// Auto-starting OVMS here ensures its log output is visible in the UI.
+func (a *App) domReady() {
+	marker := filepath.Join(a.config.InstallDir, ".deps-ready")
+	if _, err := os.Stat(marker); err == nil {
+		go a.StartOVMS() //nolint: errcheck
+	}
 }
 
 // shutdown stops OVMS and all child processes before the application exits.

@@ -2,6 +2,8 @@
 
 A Windows desktop application for managing and serving OpenVINO models via [OpenVINO Model Server (OVMS)](https://github.com/openvinotoolkit/model_server).
 
+![OpenVINO Desktop Demo](images/turintech-openvino-desktop.gif)
+
 ## Features
 
 - Download (pull) or export models from Hugging Face
