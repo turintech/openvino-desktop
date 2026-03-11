@@ -5,6 +5,11 @@ import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 const DEFAULT_OPTS_TEXT_GEN = '{\n  "weight-format": "int8"\n}'
 const DEFAULT_OPTS_EMBEDDING = '{\n  "weight-format": "fp16",\n  "extra_quantization_params": "--library sentence_transformers"\n}'
 
+const CATEGORY_GROUPS = {
+  text: { label: 'Text', types: ['text-generation', 'image-text-to-text'] },
+  embeddings: { label: 'Embeddings', types: ['feature-extraction', 'sentence-similarity'] },
+}
+
 const PROGRESS_MAP = {
   'Downloading OVMS': 15,
   'Extracting OVMS': 25,
@@ -36,6 +41,7 @@ export default function App() {
     search_limit: 30,
     text_gen_target_device: 'GPU',
     embeddings_target_device: 'CPU',
+    enabled_categories: ['text'],
   })
   const [newTag, setNewTag] = useState('')
   const [saved, setSaved] = useState(false)
@@ -113,7 +119,12 @@ export default function App() {
     Promise.all([GetConfig(), GetStartupEnabled(), GetPipelineFilters()]).then(([cfg, su, filters]) => {
       setConfig(cfg)
       setPipelineFilters(filters || [])
-      setActiveFilters(filters || [])
+      const enabled = cfg.enabled_categories || ['text']
+      const allowed = Object.entries(CATEGORY_GROUPS)
+        .filter(([key]) => enabled.includes(key))
+        .flatMap(([, g]) => g.types)
+        .filter(t => (filters || []).includes(t))
+      setActiveFilters(allowed)
       setStartup(su)
     })
 
@@ -474,19 +485,18 @@ export default function App() {
                       </div>
                     )}
                     {pipelineFilters.length > 0 && (() => {
-                      const textTypes = ['text-generation', 'image-text-to-text']
-                      const embeddingTypes = ['feature-extraction', 'sentence-similarity']
-                      const groups = [
-                        { label: 'Text', types: textTypes },
-                        { label: 'Embeddings', types: embeddingTypes },
-                      ].map(g => ({ ...g, types: g.types.filter(t => pipelineFilters.includes(t)) }))
-                       .filter(g => g.types.length > 0)
+                      const enabled = config.enabled_categories || ['text']
+                      const groups = Object.entries(CATEGORY_GROUPS)
+                        .filter(([key]) => enabled.includes(key))
+                        .map(([key, g]) => ({ key, label: g.label, types: g.types.filter(t => pipelineFilters.includes(t)) }))
+                        .filter(g => g.types.length > 0)
+                      if (groups.length === 0) return null
                       return (
                         <div className="filter-group">
                           <span className="filter-label">Filter by type</span>
                           <div className="filter-chips-grouped">
                             {groups.map(g => (
-                              <div key={g.label} className="filter-chip-group">
+                              <div key={g.key} className="filter-chip-group">
                                 <span className="filter-chip-group-label">{g.label}</span>
                                 <div className="filter-chips">
                                   {g.types.map(f => {
@@ -767,6 +777,36 @@ export default function App() {
                 onChange={e => setConfig(c => ({ ...c, search_limit: parseInt(e.target.value) || 30 }))}
               />
               <small>Max number of models returned per search (default 30).</small>
+            </div>
+
+            <div className="field">
+              <label>Model Categories</label>
+              <div className="category-toggles">
+                {Object.entries(CATEGORY_GROUPS).map(([key, g]) => {
+                  const checked = (config.enabled_categories || ['text']).includes(key)
+                  return (
+                    <label key={key} className="toggle-inline">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={e => {
+                          const next = e.target.checked
+                            ? [...(config.enabled_categories || []), key]
+                            : (config.enabled_categories || []).filter(c => c !== key)
+                          setConfig(c => ({ ...c, enabled_categories: next }))
+                          const allowed = Object.entries(CATEGORY_GROUPS)
+                            .filter(([k]) => next.includes(k))
+                            .flatMap(([, grp]) => grp.types)
+                            .filter(t => pipelineFilters.includes(t))
+                          setActiveFilters(allowed)
+                        }}
+                      />
+                      {g.label}
+                    </label>
+                  )
+                })}
+              </div>
+              <small>Choose which model categories are available in the Models tab.</small>
             </div>
 
             <div className="field">

@@ -337,6 +337,28 @@ body {
   flex-shrink: 0;
 }
 
+.category-toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: #e0e0e0;
+  cursor: pointer;
+}
+
+.toggle-inline input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #1d6ed8;
+  cursor: pointer;
+}
+
 /* Model search */
 .search-section {
   background: #1a1a1a;

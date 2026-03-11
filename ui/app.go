@@ -43,6 +43,7 @@ type Config struct {
 	EmbeddingsTargetDevice string   `json:"embeddings_target_device"`
 	APIPort                int      `json:"api_port"`
 	OVMSRestPort           int      `json:"ovms_rest_port"`
+	EnabledCategories      []string `json:"enabled_categories"`
 }
 
 // StatusResult reports whether each component is ready.
@@ -189,6 +190,9 @@ if a.config.SearchLimit == 0 {
 	}
 	if a.config.EmbeddingsTargetDevice == "" {
 		a.config.EmbeddingsTargetDevice = "GPU"
+	}
+	if len(a.config.EnabledCategories) == 0 {
+		a.config.EnabledCategories = []string{"text"}
 	}
 	if a.config.APIPort == 0 {
 		a.config.APIPort = 3333
