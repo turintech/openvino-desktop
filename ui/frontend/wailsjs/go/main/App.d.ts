@@ -32,6 +32,8 @@ export function ResetModels():Promise<void>;
 
 export function ResetOVMS():Promise<void>;
 
+export function RunBenchmark(arg1:string,arg2:string,arg3:number,arg4:string):Promise<main.BenchmarkResult>;
+
 export function SaveConfig(arg1:main.Config):Promise<void>;
 
 export function SearchModels(arg1:string,arg2:Array<string>):Promise<Array<main.HFModel>>;

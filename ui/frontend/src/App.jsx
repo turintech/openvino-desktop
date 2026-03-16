@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters } from '../wailsjs/go/main/App'
+import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
 const DEFAULT_OPTS_TEXT_GEN = '{\n  "weight-format": "int8"\n}'
@@ -25,6 +25,40 @@ function StatusBadge({ ready, label }) {
       <span className="status-dot" />
       {label}
     </div>
+  )
+}
+
+function LatencyChart({ latencies, avg, p95 }) {
+  if (!latencies || latencies.length === 0) return null
+  const W = 480, H = 130
+  const PAD = { top: 12, right: 12, bottom: 28, left: 52 }
+  const cW = W - PAD.left - PAD.right
+  const cH = H - PAD.top - PAD.bottom
+  const maxVal = Math.max(...latencies) * 1.15
+  const barSlot = cW / latencies.length
+  const barW = Math.max(3, barSlot - 3)
+  const sy = v => cH - (v / maxVal) * cH
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+      {latencies.map((l, i) => {
+        const bH = (l / maxVal) * cH
+        const x = PAD.left + i * barSlot + (barSlot - barW) / 2
+        return <rect key={i} x={x} y={PAD.top + sy(l)} width={barW} height={bH} fill="#1d6ed8" rx="1" />
+      })}
+      <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + sy(avg)} y2={PAD.top + sy(avg)} stroke="#4ec9b0" strokeWidth="1" strokeDasharray="4 3" />
+      <text x={PAD.left - 4} y={PAD.top + sy(avg) + 4} textAnchor="end" fontSize="9" fill="#4ec9b0">avg</text>
+      {p95 > avg && <>
+        <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + sy(p95)} y2={PAD.top + sy(p95)} stroke="#e0a040" strokeWidth="1" strokeDasharray="4 3" />
+        <text x={PAD.left - 4} y={PAD.top + sy(p95) + 4} textAnchor="end" fontSize="9" fill="#e0a040">p95</text>
+      </>}
+      <line x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom} stroke="#333" strokeWidth="1" />
+      <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={H - PAD.bottom} stroke="#333" strokeWidth="1" />
+      <text x={PAD.left - 4} y={PAD.top + 8} textAnchor="end" fontSize="9" fill="#555">{Math.round(maxVal)}ms</text>
+      <text x={PAD.left - 4} y={H - PAD.bottom + 1} textAnchor="end" fontSize="9" fill="#555">0</text>
+      {latencies.map((_, i) => (
+        <text key={i} x={PAD.left + i * barSlot + barSlot / 2} y={H - PAD.bottom + 12} textAnchor="middle" fontSize="9" fill="#555">{i + 1}</text>
+      ))}
+    </svg>
   )
 }
 
@@ -77,6 +111,11 @@ export default function App() {
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
   const [chatError, setChatError] = useState(null)
+
+  const [benchResults, setBenchResults] = useState({})
+  const [benchRunning, setBenchRunning] = useState({})
+  const [benchIterations, setBenchIterations] = useState(5)
+  const [benchPrompt, setBenchPrompt] = useState('Describe the benefits of AI in one sentence.')
   const chatEndRef = useRef(null)
 
   const logsEndRef = useRef(null)
@@ -165,7 +204,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if ((tab === 'models' || tab === 'chat') && status?.deps_ready && status?.ovms_ready) {
+    if ((tab === 'models' || tab === 'chat' || tab === 'benchmark') && status?.deps_ready && status?.ovms_ready) {
       loadInstalledModels()
     }
   }, [tab, status])
@@ -370,7 +409,7 @@ export default function App() {
       <header className="app-header">
         <span className="app-title">Turintech - OpenVINO Desktop</span>
         <nav className="tabs">
-          {['server', 'models', 'chat', 'settings'].map(t => {
+          {['server', 'models', 'chat', 'benchmark', 'settings'].map(t => {
             const label = t === 'server' ? 'Models Server' : t.charAt(0).toUpperCase() + t.slice(1)
             return (
               <button
@@ -707,6 +746,124 @@ export default function App() {
             </div>
           )
         })()}
+
+        {tab === 'benchmark' && (
+          <div className="panel">
+            {!serverRunning && (
+              <div className="chat-notice chat-notice--warn">
+                OVMS server is not running. Go to the <strong>Models Server</strong> tab and start it first.
+              </div>
+            )}
+
+            <div className="bench-config">
+              <div className="bench-config-row">
+                <label>Iterations <span className="bench-iter-val">{benchIterations}</span></label>
+                <input
+                  type="range" min={1} max={20} value={benchIterations}
+                  onChange={e => setBenchIterations(parseInt(e.target.value))}
+                  className="bench-slider"
+                />
+              </div>
+              <div className="bench-config-row">
+                <label>Prompt</label>
+                <textarea
+                  className="bench-prompt"
+                  value={benchPrompt}
+                  onChange={e => setBenchPrompt(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {(() => {
+              const benchModels = installedModels.filter(m => m.task === 'text-generation' || m.task === 'image-text-to-text')
+              if (benchModels.length === 0) return (
+                <div className="empty-state">No text-generation models installed. Go to the Models tab to pull or export one.</div>
+              )
+              return (
+              <div className="bench-table-wrap">
+                <table className="bench-table">
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Task</th>
+                      <th>Device</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {benchModels.map(model => {
+                      const isRunning = !!benchRunning[model.name]
+                      const result = benchResults[model.name]
+                      return (
+                        <>
+                          <tr key={model.name}>
+                            <td className="bench-model-name">{model.name}</td>
+                            <td><span className="bench-task-badge">{model.task || '—'}</span></td>
+                            <td className="bench-device">{model.target_device}</td>
+                            <td>
+                              <button
+                                className="btn-primary bench-run-btn"
+                                disabled={isRunning || !serverRunning}
+                                onClick={async () => {
+                                  setBenchRunning(prev => ({ ...prev, [model.name]: true }))
+                                  try {
+                                    const r = await RunBenchmark(model.name, model.task || '', benchIterations, benchPrompt)
+                                    setBenchResults(prev => ({ ...prev, [model.name]: r }))
+                                  } finally {
+                                    setBenchRunning(prev => ({ ...prev, [model.name]: false }))
+                                  }
+                                }}
+                              >
+                                {isRunning ? 'Running…' : result ? 'Re-run' : 'Run'}
+                              </button>
+                            </td>
+                          </tr>
+                          {result && (
+                            <tr key={model.name + '-result'} className="bench-result-row">
+                              <td colSpan={4}>
+                                {result.error ? (
+                                  <div className="error">{result.error}</div>
+                                ) : (
+                                  <div className="bench-result">
+                                    <div className="bench-stats">
+                                      <div className="bench-stat">
+                                        <span className="bench-stat-label">Min</span>
+                                        <span className="bench-stat-value">{result.min_latency_ms.toFixed(0)} ms</span>
+                                      </div>
+                                      <div className="bench-stat">
+                                        <span className="bench-stat-label">Avg</span>
+                                        <span className="bench-stat-value bench-stat-avg">{result.avg_latency_ms.toFixed(0)} ms</span>
+                                      </div>
+                                      <div className="bench-stat">
+                                        <span className="bench-stat-label">P95</span>
+                                        <span className="bench-stat-value bench-stat-p95">{result.p95_latency_ms.toFixed(0)} ms</span>
+                                      </div>
+                                      <div className="bench-stat">
+                                        <span className="bench-stat-label">Max</span>
+                                        <span className="bench-stat-value">{result.max_latency_ms.toFixed(0)} ms</span>
+                                      </div>
+                                      <div className="bench-stat">
+                                        <span className="bench-stat-label">Throughput</span>
+                                        <span className="bench-stat-value">{result.throughput_rps.toFixed(2)} req/s</span>
+                                      </div>
+                                    </div>
+                                    <LatencyChart latencies={result.latencies} avg={result.avg_latency_ms} p95={result.p95_latency_ms} />
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              )
+            })()}
+          </div>
+        )}
 
         {tab === 'settings' && (
           <div className="panel">

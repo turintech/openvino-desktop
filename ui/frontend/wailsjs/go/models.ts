@@ -1,5 +1,35 @@
 export namespace main {
 	
+	export class BenchmarkResult {
+	    model_name: string;
+	    task: string;
+	    iterations: number;
+	    min_latency_ms: number;
+	    max_latency_ms: number;
+	    avg_latency_ms: number;
+	    p95_latency_ms: number;
+	    throughput_rps: number;
+	    latencies: number[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BenchmarkResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.model_name = source["model_name"];
+	        this.task = source["task"];
+	        this.iterations = source["iterations"];
+	        this.min_latency_ms = source["min_latency_ms"];
+	        this.max_latency_ms = source["max_latency_ms"];
+	        this.avg_latency_ms = source["avg_latency_ms"];
+	        this.p95_latency_ms = source["p95_latency_ms"];
+	        this.throughput_rps = source["throughput_rps"];
+	        this.latencies = source["latencies"];
+	        this.error = source["error"];
+	    }
+	}
 	export class Config {
 	    install_dir: string;
 	    ovms_url: string;
@@ -11,6 +41,7 @@ export namespace main {
 	    embeddings_target_device: string;
 	    api_port: number;
 	    ovms_rest_port: number;
+	    enabled_categories: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -28,6 +59,7 @@ export namespace main {
 	        this.embeddings_target_device = source["embeddings_target_device"];
 	        this.api_port = source["api_port"];
 	        this.ovms_rest_port = source["ovms_rest_port"];
+	        this.enabled_categories = source["enabled_categories"];
 	    }
 	}
 	export class HFModel {

@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -981,4 +983,86 @@ func (a *App) Chat(modelName string, messages []map[string]string) (string, erro
 		return "", fmt.Errorf("no response from model")
 	}
 	return result.Choices[0].Message.Content, nil
+}
+
+// BenchmarkResult holds the outcome of a benchmark run.
+type BenchmarkResult struct {
+	ModelName     string    `json:"model_name"`
+	Task          string    `json:"task"`
+	Iterations    int       `json:"iterations"`
+	MinLatencyMs  float64   `json:"min_latency_ms"`
+	MaxLatencyMs  float64   `json:"max_latency_ms"`
+	AvgLatencyMs  float64   `json:"avg_latency_ms"`
+	P95LatencyMs  float64   `json:"p95_latency_ms"`
+	ThroughputRPS float64   `json:"throughput_rps"`
+	Latencies     []float64 `json:"latencies"`
+	Error         string    `json:"error,omitempty"`
+}
+
+// RunBenchmark sends N sequential inference requests to modelName and returns latency stats.
+func (a *App) RunBenchmark(modelName, task string, iterations int, prompt string) BenchmarkResult {
+	result := BenchmarkResult{ModelName: modelName, Task: task, Iterations: iterations}
+	if iterations <= 0 {
+		iterations = 5
+	}
+	if iterations > 50 {
+		iterations = 50
+	}
+	if prompt == "" {
+		prompt = "Hello"
+	}
+
+	isEmbedding := pipelineDefs[task].IsEmbedding
+	ovmsBase := fmt.Sprintf("http://localhost:%d", a.config.OVMSRestPort)
+
+	latencies := make([]float64, 0, iterations)
+	for i := 0; i < iterations; i++ {
+		start := time.Now()
+		var reqErr error
+		if isEmbedding {
+			_, _, reqErr = ovmsPost(ovmsBase+"/v3/embeddings", map[string]any{
+				"model": modelName,
+				"input": prompt,
+			})
+		} else {
+			_, _, reqErr = ovmsPost(ovmsBase+"/v3/chat/completions", map[string]any{
+				"model":      modelName,
+				"max_tokens": 100,
+				"messages":   []map[string]string{{"role": "user", "content": prompt}},
+			})
+		}
+		elapsed := time.Since(start).Seconds() * 1000
+		if reqErr != nil {
+			result.Error = reqErr.Error()
+			break
+		}
+		latencies = append(latencies, elapsed)
+		a.emit(fmt.Sprintf("Benchmark %s: %d/%d → %.0f ms", modelName, i+1, iterations, elapsed))
+	}
+
+	if len(latencies) == 0 {
+		return result
+	}
+
+	sorted := make([]float64, len(latencies))
+	copy(sorted, latencies)
+	sort.Float64s(sorted)
+
+	var sum float64
+	for _, l := range latencies {
+		sum += l
+	}
+
+	p95idx := int(math.Ceil(0.95*float64(len(sorted)))) - 1
+	if p95idx < 0 {
+		p95idx = 0
+	}
+
+	result.Latencies = latencies
+	result.MinLatencyMs = sorted[0]
+	result.MaxLatencyMs = sorted[len(sorted)-1]
+	result.AvgLatencyMs = sum / float64(len(latencies))
+	result.P95LatencyMs = sorted[p95idx]
+	result.ThroughputRPS = float64(len(latencies)) / (sum / 1000.0)
+	return result
 }
