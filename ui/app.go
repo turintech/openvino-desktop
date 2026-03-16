@@ -106,10 +106,13 @@ func (a *App) startup(ctx context.Context) {
 	a.extractAssets() //nolint: errcheck — best-effort on startup
 	a.startAPIServer(ctx)
 	// On first run, register the app to start with Windows by default.
+	// Always refresh the registry path so it stays in sync with the current executable.
 	if !a.config.StartupSet {
 		a.SetStartup(true) //nolint: errcheck — best-effort on first run
 		a.config.StartupSet = true
 		a.SaveConfig(a.config) //nolint: errcheck
+	} else if a.GetStartupEnabled() {
+		a.SetStartup(true) //nolint: errcheck — keep path up to date
 	}
 	// Gracefully shut down child processes on OS signals (e.g. Task Manager, Ctrl+C).
 	go func() {
