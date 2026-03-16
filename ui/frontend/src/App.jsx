@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
-const DEFAULT_OPTS_TEXT_GEN = '{\n  "weight-format": "int8"\n}'
+const DEFAULT_OPTS_TEXT_GEN = '{}'
 const DEFAULT_OPTS_EMBEDDING = '{\n  "weight-format": "fp16",\n  "extra_quantization_params": "--library sentence_transformers"\n}'
 
 const CATEGORY_GROUPS = {
@@ -595,7 +595,6 @@ export default function App() {
                               <label style={{marginTop: 10}}>Extra Options
                                 <textarea
                                   className={`opts-raw-editor${extraOptsError ? ' opts-editor-error' : ''}`}
-                                  style={{minHeight: 80, maxHeight: 180}}
                                   value={extraOptsText}
                                   spellCheck={false}
                                   onChange={e => {
@@ -605,6 +604,31 @@ export default function App() {
                                   }}
                                 />
                                 {extraOptsError && <div className="opts-editor-error-msg">Invalid JSON</div>}
+                                <div className="opts-presets">
+                                  {[
+                                    { label: 'Parsers', values: { tool_parser: 'hermes3', reasoning_parser: 'qwen3' } },
+                                    { label: 'KV Cache', values: { kv_cache_precision: 'u8' } },
+                                    { label: 'Batching', values: { max_num_batched_tokens: 4096, max_num_seqs: 256 } },
+                                  ].map(preset => (
+                                    <button
+                                      key={preset.label}
+                                      type="button"
+                                      className="opts-preset-btn"
+                                      onClick={() => {
+                                        try {
+                                          const current = JSON.parse(extraOptsText || '{}')
+                                          const merged = { ...current, ...preset.values }
+                                          setExtraOptsText(JSON.stringify(merged, null, 2))
+                                          setExtraOptsError(false)
+                                        } catch { setExtraOptsError(true) }
+                                      }}
+                                    >+ {preset.label}</button>
+                                  ))}
+                                  <a
+                                    className="opts-docs-link"
+                                    onClick={() => BrowserOpenURL('https://docs.openvino.ai/2026/model-server/ovms_docs_parameters.html')}
+                                  >All options ↗</a>
+                                </div>
                               </label>
                             )}
                           </div>

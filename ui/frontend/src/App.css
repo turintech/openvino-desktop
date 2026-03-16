@@ -914,8 +914,7 @@ body {
 
 .opts-raw-editor {
   width: 100%;
-  min-height: 200px;
-  max-height: 400px;
+  min-height: 80px;
   background: #0a0a0a;
   border: 1px solid #333;
   border-radius: 4px;
@@ -954,6 +953,39 @@ body {
   font-size: 12px;
   color: #e8a040;
   align-self: center;
+}
+
+.opts-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.opts-preset-btn {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.opts-preset-btn:hover {
+  background: #252540;
+  border-color: #555;
+  color: #fff;
+}
+.opts-docs-link {
+  margin-left: auto;
+  font-size: 11px;
+  color: #6a9fd8;
+  cursor: pointer;
+  align-self: center;
+  white-space: nowrap;
+}
+.opts-docs-link:hover {
+  color: #9bc3f0;
+  text-decoration: underline;
 }
 
 .opts-editor-error-msg {
