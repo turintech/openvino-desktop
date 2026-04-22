@@ -472,11 +472,22 @@ func (a *App) ovmsAddToConfig(modelID, modelsDir, targetDevice, task string) err
 		json.Unmarshal(data, &cfg) //nolint: errcheck — start fresh on parse error
 	}
 	a.setModelTask(modelID, task)
+
+	basePath := filepath.Join(modelsDir, modelID)
+	isLLM := !pipelineDefs[task].IsEmbedding
+
 	for i, e := range cfg.ModelConfigList {
 		if e.Config.Name == modelID {
-			if cfg.ModelConfigList[i].Config.TargetDevice != targetDevice {
-				cfg.ModelConfigList[i].Config.TargetDevice = targetDevice
-				a.emit("Updating target_device for " + modelID + " to " + targetDevice)
+			changed := cfg.ModelConfigList[i].Config.BasePath != basePath ||
+				(!isLLM && cfg.ModelConfigList[i].Config.TargetDevice != targetDevice)
+			if changed {
+				cfg.ModelConfigList[i].Config.BasePath = basePath
+				if !isLLM {
+					cfg.ModelConfigList[i].Config.TargetDevice = targetDevice
+				} else {
+					cfg.ModelConfigList[i].Config.TargetDevice = ""
+				}
+				a.emit("Updating config for " + modelID)
 				if err := writeOVMSConfig(cfgPath, cfg); err != nil {
 					return err
 				}
@@ -485,13 +496,20 @@ func (a *App) ovmsAddToConfig(modelID, modelsDir, targetDevice, task string) err
 			return nil
 		}
 	}
-	cfg.ModelConfigList = append(cfg.ModelConfigList, OVMSConfigEntry{
+
+	entry := OVMSConfigEntry{
 		Config: OVMSModelConfig{
-			Name:         modelID,
-			BasePath:     filepath.Join(modelsDir, modelID),
-			TargetDevice: targetDevice,
+			Name:     modelID,
+			BasePath: basePath,
 		},
-	})
+	}
+	// LLM models (graph.pbtxt) must not have target_device — OVMS reads it
+	// from the graph itself. Setting it here prevents mediapipe graph detection.
+	if !isLLM {
+		entry.Config.TargetDevice = targetDevice
+	}
+	cfg.ModelConfigList = append(cfg.ModelConfigList, entry)
+
 	a.emit("Adding " + modelID + " to config.json")
 	if err := writeOVMSConfig(cfgPath, cfg); err != nil {
 		return err
@@ -915,7 +933,6 @@ func (a *App) DeleteInstalledModel(modelName string) error {
 
 	var modelPath string
 	newList := make([]OVMSConfigEntry, 0)
-
 	for _, item := range ovmsConfig.ModelConfigList {
 		if item.Config.Name == modelName {
 			modelPath = item.Config.BasePath
@@ -975,20 +992,27 @@ func (a *App) Chat(modelName string, messages []map[string]string) (string, erro
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
-		Error struct {
-			Message string `json:"message"`
-		} `json:"error"`
+		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return "", fmt.Errorf("parse response (HTTP %d): %w", code, err)
 	}
-	if result.Error.Message != "" {
-		return "", fmt.Errorf("%s", result.Error.Message)
+	if len(result.Error) > 0 && string(result.Error) != "null" {
+		var errObj struct {
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(result.Error, &errObj) == nil && errObj.Message != "" {
+			return "", fmt.Errorf("%s", errObj.Message)
+		}
+		var errStr string
+		if json.Unmarshal(result.Error, &errStr) == nil && errStr != "" {
+			return "", fmt.Errorf("%s", errStr)
+		}
 	}
 	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("no response from model")
+		return "", fmt.Errorf("no response from model (HTTP %d)", code)
 	}
-	return result.Choices[0].Message.Content, nil
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
 }
 
 // BenchmarkResult holds the outcome of a benchmark run.
