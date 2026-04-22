@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   UV_BIN: '{{if eq OS "windows"}}uv.exe{{else}}uv{{end}}'
@@ -26,7 +26,7 @@ tasks:
   export:
     desc: Run model export script (pass args with -- <args>)
     cmds:
-      - '{{.PYTHON}} ui/assets/export-model-requirements/export_model.py {{.CLI_ARGS}}'
+      - "{{.PYTHON}} ui/assets/export-model-requirements/export_model.py {{.CLI_ARGS}}"
 
   run:
     desc: Start OVMS server
@@ -37,7 +37,7 @@ tasks:
     desc: Download and extract OVMS server
     cmds:
       - rm -rf ovms
-      - curl -L https://github.com/openvinotoolkit/model_server/releases/download/v2026.0/ovms_windows_python_on.zip -o ovms-tmp.zip
+      - curl -L https://github.com/openvinotoolkit/model_server/releases/download/v2026.1/ovms_windows_python_on.zip -o ovms-tmp.zip
       - tar -xf ovms-tmp.zip
       - rm -f ovms-tmp.zip
 

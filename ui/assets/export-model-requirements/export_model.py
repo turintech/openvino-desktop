@@ -110,7 +110,7 @@ parser_text.add_argument(
     "--enable_prefix_caching",
     type=lambda x: (str(x).lower() == "true"),
     default=True,
-    help="This algorithm is used to cache the prompt tokens.",
+    help="This algorithm is used to cache the prompt tokens. Default is True.",
     dest="enable_prefix_caching",
 )
 parser_text.add_argument(

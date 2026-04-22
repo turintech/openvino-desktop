@@ -49,7 +49,7 @@ Returns server state and available devices.
   "running": true,
   "deps_ready": true,
   "ovms_ready": true,
-  "version": "2026.0",
+  "version": "2026.1",
   "available_devices": ["CPU"]
 }
 ```

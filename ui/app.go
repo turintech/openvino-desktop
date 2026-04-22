@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultOvmsURL = "https://github.com/openvinotoolkit/model_server/releases/download/v2026.0/ovms_windows_python_on.zip"
+	defaultOvmsURL = "https://github.com/openvinotoolkit/model_server/releases/download/v2026.1/ovms_windows_2026.1.0_python_on.zip"
 	defaultUvURL   = "https://github.com/turintech/openvino-desktop/releases/download/uv/uv.exe"
 )
 
@@ -105,7 +105,7 @@ func (a *App) startup(ctx context.Context) {
 	// Kill any orphaned ovms.exe left by a previous process (e.g. wails dev hot-reload).
 	tk := exec.Command("taskkill", "/F", "/T", "/IM", "ovms.exe")
 	hideWindow(tk)
-	tk.Run() //nolint: errcheck
+	tk.Run()          //nolint: errcheck
 	a.extractAssets() //nolint: errcheck — best-effort on startup
 	a.startAPIServer(ctx)
 	// On first run, register the app to start with Windows by default.
@@ -189,7 +189,7 @@ func (a *App) loadConfig() {
 	if len(a.config.SearchTags) == 0 {
 		a.config.SearchTags = defaultSearchTags
 	}
-if a.config.SearchLimit == 0 {
+	if a.config.SearchLimit == 0 {
 		a.config.SearchLimit = 30
 	}
 	if a.config.TextGenTargetDevice == "" {
