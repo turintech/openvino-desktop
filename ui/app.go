@@ -56,12 +56,42 @@ type StatusResult struct {
 	OvmsVersion string `json:"ovms_version"`
 }
 
-// ovmsVersionFromURL extracts the version tag from an OVMS release URL.
-// e.g. ".../download/v2026.0/ovms_windows..." → "2026.0"
-func ovmsVersionFromURL(ovmsURL string) string {
-	for _, part := range strings.Split(ovmsURL, "/") {
-		if strings.HasPrefix(part, "v") && len(part) > 1 {
-			return part[1:]
+// ovmsVersionFromExe runs ovms.exe --version and returns a clean version string
+// e.g. "OpenVINO Model Server 2026.1.0.72cc0624" → "2026.1.0"
+func ovmsVersionFromExe(ovmsDir string) string {
+	ovmsExe := filepath.Join(ovmsDir, "ovms.exe")
+	if _, err := os.Stat(ovmsExe); err != nil {
+		return ""
+	}
+	cmd := exec.Command(ovmsExe, "--version")
+	cmd.Dir = ovmsDir
+	cmd.Env = buildOVMSEnv(ovmsDir)
+	hideWindow(cmd)
+	out, _ := cmd.CombinedOutput()
+	if len(out) == 0 {
+		return ""
+	}
+	firstLine := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
+	for _, word := range strings.Fields(firstLine) {
+		if len(word) == 0 || word[0] < '0' || word[0] > '9' {
+			continue
+		}
+		// Keep only the all-numeric dot-separated parts, dropping git hash suffixes.
+		var numParts []string
+		for _, p := range strings.Split(word, ".") {
+			allDigits := len(p) > 0
+			for _, c := range p {
+				if c < '0' || c > '9' {
+					allDigits = false
+					break
+				}
+			}
+			if allDigits {
+				numParts = append(numParts, p)
+			}
+		}
+		if len(numParts) >= 2 {
+			return strings.Join(numParts, ".")
 		}
 	}
 	return ""
@@ -69,11 +99,12 @@ func ovmsVersionFromURL(ovmsURL string) string {
 
 // App is the Wails application struct.
 type App struct {
-	ctx      context.Context
-	config   Config
-	ovmsProc *exec.Cmd
-	ovmsMu   sync.Mutex
-	assets   embed.FS
+	ctx             context.Context
+	config          Config
+	ovmsProc        *exec.Cmd
+	ovmsMu          sync.Mutex
+	assets          embed.FS
+	ovmsVersionCache string
 }
 
 func NewApp(assets embed.FS) *App {
@@ -168,6 +199,71 @@ func (a *App) GetVersion() string {
 	return Version
 }
 
+// cmpVersions compares two dot-separated numeric version strings.
+// Returns -1 if a < b, 0 if equal, 1 if a > b.
+func cmpVersions(a, b string) int {
+	ap := strings.Split(a, ".")
+	bp := strings.Split(b, ".")
+	n := len(ap)
+	if len(bp) > n {
+		n = len(bp)
+	}
+	for i := 0; i < n; i++ {
+		var ai, bi int
+		if i < len(ap) {
+			ai, _ = strconv.Atoi(ap[i])
+		}
+		if i < len(bp) {
+			bi, _ = strconv.Atoi(bp[i])
+		}
+		if ai < bi {
+			return -1
+		}
+		if ai > bi {
+			return 1
+		}
+	}
+	return 0
+}
+
+// checkOVMSUpdate queries the GitHub releases API for the latest OVMS release
+// and emits "ovms-update-available" with the download URL if a newer version exists.
+func (a *App) checkOVMSUpdate() {
+	ovmsDirPath := filepath.Join(a.config.InstallDir, "ovms")
+	installedVersion := ovmsVersionFromExe(ovmsDirPath)
+	if installedVersion == "" {
+		return
+	}
+
+	resp, err := http.Get("https://api.github.com/repos/openvinotoolkit/model_server/releases/latest")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	var release struct {
+		TagName string `json:"tag_name"`
+		Assets  []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil || release.TagName == "" {
+		return
+	}
+
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	if cmpVersions(installedVersion, latestVersion) >= 0 {
+		return
+	}
+
+	for _, asset := range release.Assets {
+		if strings.HasPrefix(asset.Name, "ovms_windows_") && strings.HasSuffix(asset.Name, "_python_on.zip") {
+			runtime.EventsEmit(a.ctx, "ovms-update-available", asset.BrowserDownloadURL)
+			return
+		}
+	}
+}
+
 // domReady is called after the frontend is mounted and ready to receive events.
 // Auto-starting OVMS here ensures its log output is visible in the UI.
 func (a *App) domReady() {
@@ -176,6 +272,7 @@ func (a *App) domReady() {
 		go a.StartOVMS() //nolint: errcheck
 	}
 	go func() {
+		a.checkOVMSUpdate()
 		if info := a.CheckForUpdate(); info.Available {
 			runtime.EventsEmit(a.ctx, "update-available", info)
 		}
@@ -310,6 +407,22 @@ func (a *App) GetAvailableDevices() []string {
 	return devices
 }
 
+// ovmsVersionFromAPI queries the running OVMS server's metadata endpoint for its version.
+func ovmsVersionFromAPI(port int) string {
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/v2/server/metadata", port))
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	var meta struct {
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return ""
+	}
+	return meta.Version
+}
+
 // CheckStatus reports whether the export deps and OVMS are present.
 func (a *App) CheckStatus() StatusResult {
 	marker := filepath.Join(a.config.InstallDir, ".deps-ready")
@@ -318,10 +431,22 @@ func (a *App) CheckStatus() StatusResult {
 	_, depsErr := os.Stat(marker)
 	_, ovmsErr := os.Stat(ovmsDirPath)
 
+	if ovmsErr == nil && a.ovmsVersionCache == "" {
+		a.ovmsMu.Lock()
+		running := a.ovmsProc != nil
+		a.ovmsMu.Unlock()
+		if running {
+			a.ovmsVersionCache = ovmsVersionFromAPI(a.config.OVMSRestPort)
+		}
+		if a.ovmsVersionCache == "" {
+			a.ovmsVersionCache = ovmsVersionFromExe(ovmsDirPath)
+		}
+	}
+
 	return StatusResult{
 		DepsReady:   depsErr == nil,
 		OvmsReady:   ovmsErr == nil,
-		OvmsVersion: ovmsVersionFromURL(a.config.OvmsURL),
+		OvmsVersion: a.ovmsVersionCache,
 	}
 }
 
@@ -695,7 +820,20 @@ func (a *App) ResetModels() error {
 
 // ResetOVMS removes the OVMS server directory and the deps-ready marker.
 // Uses rd /s /q for fast native Windows deletion.
+// UpdateOVMSToLatest updates the configured OVMS URL to the default bundled
+// with this binary, saves settings, then resets OVMS so the new version is
+// downloaded on the next PrepareOVMS call.
+func (a *App) UpdateOVMSToLatest() error {
+	a.config.OvmsURL = defaultOvmsURL
+	a.ovmsVersionCache = ""
+	if err := a.SaveConfig(a.config); err != nil {
+		return err
+	}
+	return a.ResetOVMS()
+}
+
 func (a *App) ResetOVMS() error {
+	a.ovmsVersionCache = ""
 	a.stopAndWait()
 	ovmsDirPath := filepath.Join(a.config.InstallDir, "ovms")
 	if _, err := os.Stat(ovmsDirPath); err == nil {

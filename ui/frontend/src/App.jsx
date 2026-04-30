@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark } from '../wailsjs/go/main/App'
+import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark, UpdateOVMSToLatest } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
 const DEFAULT_OPTS_TEXT_GEN = '{}'
@@ -19,9 +19,13 @@ const PROGRESS_MAP = {
   'Setup complete': 100,
 }
 
-function StatusBadge({ ready, label }) {
+function StatusBadge({ ready, label, onUpdate }) {
   return (
-    <div className={`status-badge ${ready ? 'ready' : 'missing'}`}>
+    <div
+      className={`status-badge ${ready ? 'ready' : 'missing'}${onUpdate ? ' updatable' : ''}`}
+      onClick={onUpdate}
+      title={onUpdate ? 'Update to latest' : undefined}
+    >
       <span className="status-dot" />
       {label}
     </div>
@@ -118,6 +122,7 @@ export default function App() {
   const [benchIterations, setBenchIterations] = useState(5)
   const [benchPrompt, setBenchPrompt] = useState('Describe the benefits of AI in one sentence.')
   const [updateInfo, setUpdateInfo] = useState(null)
+  const [ovmsUpdateUrl, setOvmsUpdateUrl] = useState(null)
   const chatEndRef = useRef(null)
 
   const logsEndRef = useRef(null)
@@ -127,7 +132,8 @@ export default function App() {
 
   useEffect(() => {
     const offUpdate = EventsOn('update-available', info => setUpdateInfo(info))
-    return () => { if (offUpdate) offUpdate() }
+    const offOvms = EventsOn('ovms-update-available', url => setOvmsUpdateUrl(url))
+    return () => { if (offUpdate) offUpdate(); if (offOvms) offOvms() }
   }, [])
 
   useEffect(() => {
@@ -430,7 +436,11 @@ export default function App() {
           })}
         </nav>
         <div className="status-row header-status">
-          <StatusBadge ready={serverRunning} label={status.ovms_version ? `OVMS ${status.ovms_version}` : 'OVMS'} />
+          <StatusBadge
+            ready={serverRunning}
+            label={status.ovms_version ? `OVMS ${status.ovms_version}` : 'OVMS'}
+            onUpdate={ovmsUpdateUrl ? () => UpdateOVMSToLatest().then(() => setOvmsUpdateUrl(null)) : undefined}
+          />
           {updateInfo && (
             <button className="status-badge update-badge" onClick={() => BrowserOpenURL(updateInfo.url)} title={updateInfo.release_notes || `Download ${updateInfo.version}`}>
               <span className="status-dot" />New Version

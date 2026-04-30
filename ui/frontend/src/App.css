@@ -124,6 +124,15 @@ body {
   border: none;
 }
 
+.status-badge.updatable {
+  color: #e8a04a;
+  cursor: pointer;
+}
+
+.status-badge.updatable:hover {
+  opacity: 0.8;
+}
+
 .status-dot {
   width: 6px;
   height: 6px;

@@ -47,3 +47,5 @@ export function SetStartup(arg1:boolean):Promise<void>;
 export function StartOVMS():Promise<void>;
 
 export function StopOVMS():Promise<void>;
+
+export function UpdateOVMSToLatest():Promise<void>;

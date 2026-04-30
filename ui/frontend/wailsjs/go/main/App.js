@@ -93,3 +93,7 @@ export function StartOVMS() {
 export function StopOVMS() {
   return window['go']['main']['App']['StopOVMS']();
 }
+
+export function UpdateOVMSToLatest() {
+  return window['go']['main']['App']['UpdateOVMSToLatest']();
+}
