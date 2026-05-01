@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark, UpdateOVMSToLatest } from '../wailsjs/go/main/App'
+import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetOVMSRuntimeStatus, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark, UpdateOVMSToLatest } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
 const DEFAULT_OPTS_TEXT_GEN = '{}'
@@ -96,6 +96,7 @@ export default function App() {
 
   const [serverRunning, setServerRunning] = useState(false)
   const [serverLogs, setServerLogs] = useState([])
+  const [ovmsRuntime, setOvmsRuntime] = useState({ ready: false, version: '' })
 
   const [targetDevice, setTargetDevice] = useState('GPU')
   const [availableDevices, setAvailableDevices] = useState(['CPU', 'GPU', 'NPU', 'AUTO'])
@@ -163,6 +164,19 @@ export default function App() {
       if (offModelsChanged) offModelsChanged()
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const poll = () => {
+      GetOVMSRuntimeStatus()
+        .then(s => { if (!cancelled) setOvmsRuntime(s) })
+        .catch(() => { if (!cancelled) setOvmsRuntime(prev => ({ ...prev, ready: false })) })
+    }
+    poll()
+    if (!serverRunning) return () => { cancelled = true }
+    const id = setInterval(poll, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [serverRunning])
 
   useEffect(() => {
     if (startupRan.current) return
@@ -322,6 +336,22 @@ export default function App() {
     await runSetup()
   }
 
+  const handleUpdateOVMS = async () => {
+    if (!ovmsUpdateUrl) return
+    if (!window.confirm('This will download and install the latest OVMS version. Continue?')) return
+    setStatus(null)
+    setRunning(true)
+    try {
+      await UpdateOVMSToLatest(ovmsUpdateUrl)
+      setOvmsUpdateUrl(null)
+    } catch (err) {
+      setInitError(String(err))
+      setRunning(false)
+      return
+    }
+    await runSetup()
+  }
+
   const handleResetModels = async () => {
     if (!window.confirm('This will delete the models folder and all config JSON files. Continue?')) return
     setRunning(true)
@@ -437,9 +467,9 @@ export default function App() {
         </nav>
         <div className="status-row header-status">
           <StatusBadge
-            ready={serverRunning}
-            label={status.ovms_version ? `OVMS ${status.ovms_version}` : 'OVMS'}
-            onUpdate={ovmsUpdateUrl ? () => UpdateOVMSToLatest().then(() => setOvmsUpdateUrl(null)) : undefined}
+            ready={serverRunning && ovmsRuntime.ready}
+            label={`OVMS${ovmsRuntime.version ? ' ' + ovmsRuntime.version : ''}`}
+            onUpdate={ovmsUpdateUrl ? handleUpdateOVMS : undefined}
           />
           {updateInfo && (
             <button className="status-badge update-badge" onClick={() => BrowserOpenURL(updateInfo.url)} title={updateInfo.release_notes || `Download ${updateInfo.version}`}>

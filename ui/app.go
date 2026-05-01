@@ -51,9 +51,32 @@ type Config struct {
 
 // StatusResult reports whether each component is ready.
 type StatusResult struct {
-	DepsReady   bool   `json:"deps_ready"`
-	OvmsReady   bool   `json:"ovms_ready"`
-	OvmsVersion string `json:"ovms_version"`
+	DepsReady bool `json:"deps_ready"`
+	OvmsReady bool `json:"ovms_ready"`
+}
+
+// ovmsVersionFromExe runs ovms.exe --version and returns a clean version string
+// trimOVMSVersion keeps the leading dot-separated all-numeric parts of a version
+// word, dropping any git hash suffix. e.g. "2026.1.0.72cc0624" → "2026.1.0".
+func trimOVMSVersion(word string) string {
+	var numParts []string
+	for _, p := range strings.Split(word, ".") {
+		allDigits := len(p) > 0
+		for _, c := range p {
+			if c < '0' || c > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if !allDigits {
+			break
+		}
+		numParts = append(numParts, p)
+	}
+	if len(numParts) < 2 {
+		return ""
+	}
+	return strings.Join(numParts, ".")
 }
 
 // ovmsVersionFromExe runs ovms.exe --version and returns a clean version string
@@ -76,22 +99,8 @@ func ovmsVersionFromExe(ovmsDir string) string {
 		if len(word) == 0 || word[0] < '0' || word[0] > '9' {
 			continue
 		}
-		// Keep only the all-numeric dot-separated parts, dropping git hash suffixes.
-		var numParts []string
-		for _, p := range strings.Split(word, ".") {
-			allDigits := len(p) > 0
-			for _, c := range p {
-				if c < '0' || c > '9' {
-					allDigits = false
-					break
-				}
-			}
-			if allDigits {
-				numParts = append(numParts, p)
-			}
-		}
-		if len(numParts) >= 2 {
-			return strings.Join(numParts, ".")
+		if v := trimOVMSVersion(word); v != "" {
+			return v
 		}
 	}
 	return ""
@@ -99,12 +108,22 @@ func ovmsVersionFromExe(ovmsDir string) string {
 
 // App is the Wails application struct.
 type App struct {
-	ctx             context.Context
-	config          Config
-	ovmsProc        *exec.Cmd
-	ovmsMu          sync.Mutex
-	assets          embed.FS
+	ctx              context.Context
+	config           Config
+	ovmsProc         *exec.Cmd
+	ovmsMu           sync.Mutex
+	assets           embed.FS
 	ovmsVersionCache string
+}
+
+// ovmsVersion returns the installed OVMS version, caching the result so the
+// ovms.exe --version subprocess only runs once per install.
+func (a *App) ovmsVersion() string {
+	if a.ovmsVersionCache != "" {
+		return a.ovmsVersionCache
+	}
+	a.ovmsVersionCache = ovmsVersionFromExe(filepath.Join(a.config.InstallDir, "ovms"))
+	return a.ovmsVersionCache
 }
 
 func NewApp(assets embed.FS) *App {
@@ -229,8 +248,7 @@ func cmpVersions(a, b string) int {
 // checkOVMSUpdate queries the GitHub releases API for the latest OVMS release
 // and emits "ovms-update-available" with the download URL if a newer version exists.
 func (a *App) checkOVMSUpdate() {
-	ovmsDirPath := filepath.Join(a.config.InstallDir, "ovms")
-	installedVersion := ovmsVersionFromExe(ovmsDirPath)
+	installedVersion := a.ovmsVersion()
 	if installedVersion == "" {
 		return
 	}
@@ -407,22 +425,6 @@ func (a *App) GetAvailableDevices() []string {
 	return devices
 }
 
-// ovmsVersionFromAPI queries the running OVMS server's metadata endpoint for its version.
-func ovmsVersionFromAPI(port int) string {
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/v2/server/metadata", port))
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-	var meta struct {
-		Version string `json:"version"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
-		return ""
-	}
-	return meta.Version
-}
-
 // CheckStatus reports whether the export deps and OVMS are present.
 func (a *App) CheckStatus() StatusResult {
 	marker := filepath.Join(a.config.InstallDir, ".deps-ready")
@@ -431,22 +433,9 @@ func (a *App) CheckStatus() StatusResult {
 	_, depsErr := os.Stat(marker)
 	_, ovmsErr := os.Stat(ovmsDirPath)
 
-	if ovmsErr == nil && a.ovmsVersionCache == "" {
-		a.ovmsMu.Lock()
-		running := a.ovmsProc != nil
-		a.ovmsMu.Unlock()
-		if running {
-			a.ovmsVersionCache = ovmsVersionFromAPI(a.config.OVMSRestPort)
-		}
-		if a.ovmsVersionCache == "" {
-			a.ovmsVersionCache = ovmsVersionFromExe(ovmsDirPath)
-		}
-	}
-
 	return StatusResult{
-		DepsReady:   depsErr == nil,
-		OvmsReady:   ovmsErr == nil,
-		OvmsVersion: a.ovmsVersionCache,
+		DepsReady: depsErr == nil,
+		OvmsReady: ovmsErr == nil,
 	}
 }
 
@@ -820,11 +809,15 @@ func (a *App) ResetModels() error {
 
 // ResetOVMS removes the OVMS server directory and the deps-ready marker.
 // Uses rd /s /q for fast native Windows deletion.
-// UpdateOVMSToLatest updates the configured OVMS URL to the default bundled
-// with this binary, saves settings, then resets OVMS so the new version is
-// downloaded on the next PrepareOVMS call.
-func (a *App) UpdateOVMSToLatest() error {
-	a.config.OvmsURL = defaultOvmsURL
+// UpdateOVMSToLatest sets the OVMS download URL to the given one (as discovered
+// by checkOVMSUpdate), saves settings, then resets OVMS so the new version is
+// downloaded on the next PrepareOVMS call. Falls back to defaultOvmsURL when
+// no URL is provided.
+func (a *App) UpdateOVMSToLatest(url string) error {
+	if url == "" {
+		url = defaultOvmsURL
+	}
+	a.config.OvmsURL = url
 	a.ovmsVersionCache = ""
 	if err := a.SaveConfig(a.config); err != nil {
 		return err
@@ -996,6 +989,26 @@ func (a *App) IsOVMSRunning() bool {
 	a.ovmsMu.Lock()
 	defer a.ovmsMu.Unlock()
 	return a.ovmsProc != nil
+}
+
+// OVMSRuntimeStatus is the live state of the OVMS server, queried via its
+// KServe v2 REST API.
+type OVMSRuntimeStatus struct {
+	Ready   bool   `json:"ready"`
+	Version string `json:"version"`
+}
+
+// GetOVMSRuntimeStatus reports OVMS readiness (via /v2/health/ready) and the
+// installed version (from ovms.exe --version, cached).
+func (a *App) GetOVMSRuntimeStatus() OVMSRuntimeStatus {
+	out := OVMSRuntimeStatus{Version: a.ovmsVersion()}
+	url := fmt.Sprintf("http://localhost:%d/v2/health/ready", a.config.OVMSRestPort)
+	client := &http.Client{Timeout: 2 * time.Second}
+	if resp, err := client.Get(url); err == nil {
+		out.Ready = resp.StatusCode == http.StatusOK
+		resp.Body.Close()
+	}
+	return out
 }
 
 // ModelInfo represents an installed model with its configuration.
