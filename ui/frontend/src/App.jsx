@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark } from '../wailsjs/go/main/App'
+import { GetConfig, SaveConfig, PrepareOVMS, ResetOVMS, ResetModels, CheckStatus, GetStartupEnabled, SetStartup, SearchModels, ExportTextGen, ExportEmbeddings, PullModel, StartOVMS, StopOVMS, IsOVMSRunning, GetOVMSRuntimeStatus, GetInstalledModels, DeleteInstalledModel, GetAvailableDevices, Chat, GetPipelineFilters, RunBenchmark, UpdateOVMSToLatest } from '../wailsjs/go/main/App'
 import { EventsOn, BrowserOpenURL } from '../wailsjs/runtime/runtime'
 
 const DEFAULT_OPTS_TEXT_GEN = '{}'
@@ -19,9 +19,13 @@ const PROGRESS_MAP = {
   'Setup complete': 100,
 }
 
-function StatusBadge({ ready, label }) {
+function StatusBadge({ ready, label, onUpdate }) {
   return (
-    <div className={`status-badge ${ready ? 'ready' : 'missing'}`}>
+    <div
+      className={`status-badge ${ready ? 'ready' : 'missing'}${onUpdate ? ' updatable' : ''}`}
+      onClick={onUpdate}
+      title={onUpdate ? 'Update to latest' : undefined}
+    >
       <span className="status-dot" />
       {label}
     </div>
@@ -92,6 +96,7 @@ export default function App() {
 
   const [serverRunning, setServerRunning] = useState(false)
   const [serverLogs, setServerLogs] = useState([])
+  const [ovmsRuntime, setOvmsRuntime] = useState({ ready: false, version: '' })
 
   const [targetDevice, setTargetDevice] = useState('GPU')
   const [availableDevices, setAvailableDevices] = useState(['CPU', 'GPU', 'NPU', 'AUTO'])
@@ -117,12 +122,20 @@ export default function App() {
   const [benchRunning, setBenchRunning] = useState({})
   const [benchIterations, setBenchIterations] = useState(5)
   const [benchPrompt, setBenchPrompt] = useState('Describe the benefits of AI in one sentence.')
+  const [updateInfo, setUpdateInfo] = useState(null)
+  const [ovmsUpdateUrl, setOvmsUpdateUrl] = useState(null)
   const chatEndRef = useRef(null)
 
   const logsEndRef = useRef(null)
   const initLogsEndRef = useRef(null)
   const serverLogsEndRef = useRef(null)
   const startupRan = useRef(false)
+
+  useEffect(() => {
+    const offUpdate = EventsOn('update-available', info => setUpdateInfo(info))
+    const offOvms = EventsOn('ovms-update-available', url => setOvmsUpdateUrl(url))
+    return () => { if (offUpdate) offUpdate(); if (offOvms) offOvms() }
+  }, [])
 
   useEffect(() => {
     const offLog = EventsOn('log', line => {
@@ -151,6 +164,19 @@ export default function App() {
       if (offModelsChanged) offModelsChanged()
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const poll = () => {
+      GetOVMSRuntimeStatus()
+        .then(s => { if (!cancelled) setOvmsRuntime(s) })
+        .catch(() => { if (!cancelled) setOvmsRuntime(prev => ({ ...prev, ready: false })) })
+    }
+    poll()
+    if (!serverRunning) return () => { cancelled = true }
+    const id = setInterval(poll, 3000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [serverRunning])
 
   useEffect(() => {
     if (startupRan.current) return
@@ -310,6 +336,22 @@ export default function App() {
     await runSetup()
   }
 
+  const handleUpdateOVMS = async () => {
+    if (!ovmsUpdateUrl) return
+    if (!window.confirm('This will download and install the latest OVMS version. Continue?')) return
+    setStatus(null)
+    setRunning(true)
+    try {
+      await UpdateOVMSToLatest(ovmsUpdateUrl)
+      setOvmsUpdateUrl(null)
+    } catch (err) {
+      setInitError(String(err))
+      setRunning(false)
+      return
+    }
+    await runSetup()
+  }
+
   const handleResetModels = async () => {
     if (!window.confirm('This will delete the models folder and all config JSON files. Continue?')) return
     setRunning(true)
@@ -424,7 +466,16 @@ export default function App() {
           })}
         </nav>
         <div className="status-row header-status">
-          <StatusBadge ready={serverRunning} label={status.ovms_version ? `OVMS ${status.ovms_version}` : 'OVMS'} />
+          <StatusBadge
+            ready={serverRunning && ovmsRuntime.ready}
+            label={`OVMS${ovmsRuntime.version ? ' ' + ovmsRuntime.version : ''}`}
+            onUpdate={ovmsUpdateUrl ? handleUpdateOVMS : undefined}
+          />
+          {updateInfo && (
+            <button className="status-badge update-badge" onClick={() => BrowserOpenURL(updateInfo.url)} title={updateInfo.release_notes || `Download ${updateInfo.version}`}>
+              <span className="status-dot" />New Version
+            </button>
+          )}
         </div>
       </header>
 

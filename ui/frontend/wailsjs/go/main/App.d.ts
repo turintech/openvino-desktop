@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function Chat(arg1:string,arg2:Array<Record<string, string>>):Promise<string>;
 
+export function CheckForUpdate():Promise<main.UpdateInfo>;
+
 export function CheckStatus():Promise<main.StatusResult>;
 
 export function DeleteInstalledModel(arg1:string):Promise<void>;
@@ -21,6 +23,8 @@ export function GetInstalledModels():Promise<Array<main.ModelInfo>>;
 export function GetPipelineFilters():Promise<Array<string>>;
 
 export function GetStartupEnabled():Promise<boolean>;
+
+export function GetVersion():Promise<string>;
 
 export function IsOVMSRunning():Promise<boolean>;
 
@@ -43,3 +47,5 @@ export function SetStartup(arg1:boolean):Promise<void>;
 export function StartOVMS():Promise<void>;
 
 export function StopOVMS():Promise<void>;
+
+export function UpdateOVMSToLatest():Promise<void>;

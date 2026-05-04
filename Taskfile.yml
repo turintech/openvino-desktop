@@ -65,8 +65,11 @@ tasks:
     desc: Build Wails UI as a Windows executable
     deps: [appicon]
     dir: ui
+    vars:
+      GIT_TAG:
+        sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
     cmds:
-      - wails build
+      - wails build -ldflags "-X main.Version={{.GIT_TAG}}"
 
   get-remote-export:
     desc: Download and extract latest export release

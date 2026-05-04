@@ -51,11 +51,13 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func (a *App) apiStatus(w http.ResponseWriter, _ *http.Request) {
 	s := a.CheckStatus()
+	rt := a.GetOVMSRuntimeStatus()
 	writeJSON(w, http.StatusOK, map[string]any{
 		"running":           a.IsOVMSRunning(),
 		"deps_ready":        s.DepsReady,
 		"ovms_ready":        s.OvmsReady,
-		"version":           s.OvmsVersion,
+		"ready":             rt.Ready,
+		"version":           rt.Version,
 		"available_devices": a.GetAvailableDevices(),
 	})
 }

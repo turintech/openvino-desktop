@@ -10,6 +10,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// Version is set at build time via -ldflags "-X main.Version=vX.Y.Z".
+var Version = "dev"
+
 //go:embed all:frontend/dist
 var webAssets embed.FS
 
