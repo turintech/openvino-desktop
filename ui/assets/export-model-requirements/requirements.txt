@@ -2,7 +2,7 @@
 optimum-intel==1.27.0
 accelerate==1.11.0
 datasets
-diffusers==0.35.2  # for image generation
+diffusers==0.38.0  # for image generation
 einops==0.8.1
 nncf==3.0.0
 numpy==2.2.6
